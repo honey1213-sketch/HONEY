@@ -3,190 +3,275 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>iPhone — ₹5 Offer (Mock)</title>
+  <title>ShopMock — iPhone ₹5 Sale (Production-ready demo)</title>
   <style>
-    :root{--bg:#f3f4f6;--card:#fff;--accent:#ff9900;--muted:#6b7280;--shadow:0 6px 18px rgba(15,23,42,0.08)}
+    :root{--bg:#f6f7fb;--card:#fff;--accent:#ff9900;--muted:#6b7280;--shadow:0 10px 30px rgba(2,6,23,0.08)}
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:var(--bg);color:#0f172a}
-    .nav{background:#232f3e;color:#fff;padding:16px 24px;display:flex;align-items:center;gap:16px}
-    .logo{font-weight:700;font-size:20px}
-    .container{max-width:1100px;margin:28px auto;padding:0 18px}
-    .grid{display:grid;grid-template-columns:360px 1fr;gap:24px}
+    .nav{background:#232f3e;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:40}
+    .logo{font-weight:800;font-size:20px}
+    .container{max-width:1200px;margin:22px auto;padding:0 18px}
+    .hero{display:flex;gap:18px;align-items:center}
+    .hero .headline{font-size:28px;font-weight:800}
+    .search{margin-left:auto}
+    input.search-inp{padding:10px 12px;border-radius:10px;border:1px solid #e6eef5}
 
-    /* Product card */
-    .card{background:var(--card);border-radius:10px;padding:18px;box-shadow:var(--shadow)}
-    .product-image{width:100%;height:320px;border-radius:8px;background:linear-gradient(180deg,#e6eefc,#f8fafc);display:flex;align-items:center;justify-content:center}
-    .product-image img{max-width:80%;max-height:80%;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.12))}
+    .products{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:18px}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+    .product-image{width:100%;height:220px;border-radius:8px;background:linear-gradient(180deg,#eef6ff,#f8fafc);display:flex;align-items:center;justify-content:center}
+    .product-image img{max-width:70%;max-height:80%}
+    .p-title{font-weight:700;margin:10px 0}
+    .p-sub{color:var(--muted);font-size:13px}
+    .price{font-weight:900;color:var(--accent);font-size:20px}
+    .old{color:var(--muted);text-decoration:line-through;margin-left:8px}
+    .prod-actions{display:flex;gap:8px;margin-top:10px}
+    .btn{padding:10px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+    .btn-primary{background:var(--accent)}
+    .btn-outline{background:#111827;color:#fff}
 
-    .title{font-size:20px;font-weight:700;margin:12px 0}
-    .price{font-size:28px;color:var(--accent);font-weight:800}
-    .old{font-size:14px;color:var(--muted);text-decoration:line-through;margin-left:8px}
-
-    .features{margin-top:12px;color:#111827}
-    .btn-row{display:flex;gap:12px;margin-top:18px}
-    .btn{padding:12px 16px;border-radius:8px;border:0;font-weight:700;cursor:pointer}
-    .btn-buy{background:var(--accent);color:#051923}
-    .btn-cart{background:#111827;color:#fff}
-    .note{font-size:13px;color:var(--muted);margin-top:8px}
-
-    /* Right column */
-    .details h3{margin:0 0 12px 0}
-    .detail-list{background:var(--card);padding:14px;border-radius:10px;box-shadow:var(--shadow)}
-    .meta{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef2f7}
+    .cart{position:fixed;right:18px;bottom:18px;background:var(--card);padding:12px;border-radius:12px;box-shadow:var(--shadow);width:320px}
+    .cart h4{margin:0 0 8px 0}
+    .cart-list{max-height:280px;overflow:auto}
+    .cart-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #eef2f7}
+    .checkout{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
 
     /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:flex;align-items:center;justify-content:center;z-index:50}
-    .modal{width:420px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 30px 60px rgba(2,6,23,0.3)}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.55);display:flex;align-items:center;justify-content:center;z-index:60}
+    .modal{width:720px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 30px 60px rgba(2,6,23,0.35)}
+    .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
     .field{display:flex;flex-direction:column;margin-bottom:12px}
     .field label{font-size:13px;color:var(--muted);margin-bottom:6px}
     .field input,.field textarea,.field select{padding:10px;border-radius:8px;border:1px solid #e6eef5;font-size:14px}
-    .small{font-size:12px;color:var(--muted)}
+    .small{font-size:13px;color:var(--muted)}
 
-    footer{text-align:center;color:var(--muted);margin-top:18px}
+    .payment-options{display:flex;gap:8px;flex-direction:column}
+    .upi-box{padding:8px;border-radius:8px;border:1px solid #eef2f7}
 
-    @media (max-width:880px){.grid{grid-template-columns:1fr;}.product-image{height:260px}}
+    footer{text-align:center;color:var(--muted);margin-top:22px}
+
+    @media (max-width:1000px){.products{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+    @media (max-width:640px){.products{grid-template-columns:1fr}.cart{width:90%;right:5%;}}
   </style>
 </head>
 <body>
   <div class="nav">
     <div class="logo">ShopMock</div>
-    <div style="margin-left:8px;color:#e7edf7">- Best Deals</div>
+    <div class="small">Reliable marketplace</div>
+    <div class="search"><input class="search-inp" placeholder="Search products, e.g. iPhone 5"></div>
   </div>
 
   <div class="container">
-    <div class="grid">
-      <div class="card">
-        <div class="product-image">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/IPhone_5.png" alt="iPhone 5">
-        </div>
-        <div class="title">Apple iPhone 5 — 16GB</div>
-        <div style="display:flex;align-items:center">
-          <div class="price">₹5</div>
-          <div class="old">₹20,000</div>
-        </div>
-
-        <div class="features">
-          <div class="note">Condition: New (Mock)</div>
-          <ul>
-            <li>Screen: 4-inch Retina</li>
-            <li>Storage: 16 GB</li>
-            <li>Color: Black</li>
-          </ul>
-
-          <div class="btn-row">
-            <button class="btn btn-buy" id="buyNow">Buy Now</button>
-            <button class="btn btn-cart" id="addCart">Add to Cart</button>
-          </div>
-
-          <div class="note">Note: Yeh sirf ek demo page hai — koi real payment yahan nahi hoti.</div>
-        </div>
-      </div>
-
+    <div class="hero">
       <div>
-        <div class="detail-list card details">
-          <h3>Order Summary</h3>
-          <div class="meta"><div>Item</div><div>iPhone 5</div></div>
-          <div class="meta"><div>Price</div><div>₹5</div></div>
-          <div class="meta"><div>Delivery</div><div>Free (Mock)</div></div>
-          <div style="padding-top:12px">Quantity: <strong id="quantity">1</strong></div>
+        <div class="headline">Mega Offers — Real checkout with UPI</div>
+        <div class="small">Multiple products. Secure checkout requires a backend for true payment verification. (Instructions below)</div>
+      </div>
+    </div>
 
-          <div style="display:flex;gap:10px;margin-top:12px">
-            <button class="btn" id="dec">-</button>
-            <button class="btn" id="inc">+</button>
-          </div>
+    <div class="products" id="products"></div>
 
-          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
-            <div class="small">Total</div>
-            <div style="font-weight:800;font-size:20px">₹<span id="total">5</span></div>
-          </div>
-
-          <div style="margin-top:16px">
-            <button class="btn btn-buy" id="checkout">Place Order</button>
-          </div>
+    <div class="cart" id="cartBox">
+      <h4>Your Cart</h4>
+      <div class="cart-list" id="cartList"></div>
+      <div class="checkout">
+        <div>
+          <div class="small">Total</div>
+          <div style="font-weight:800;font-size:18px">₹<span id="cartTotal">0</span></div>
         </div>
-
-        <div style="height:18px"></div>
-        <div class="card">
-          <h4>Seller Info</h4>
-          <div class="small">Seller: MockSeller Pvt Ltd</div>
-          <div class="small">Ships from: India</div>
+        <div>
+          <button class="btn btn-primary" id="goCheckout">Checkout</button>
         </div>
       </div>
     </div>
 
-    <footer>© 2025 ShopMock — Demo site only. Kisi bhi payment screen ya sensitive data ko yahan submit mat karein.</footer>
+    <footer>© 2025 ShopMock — Make sure to add server-side payment verification before taking real money.</footer>
   </div>
 
-  <!-- Modal (hidden initially) -->
-  <template id="orderModalTpl">
+  <!-- Checkout modal template -->
+  <template id="checkoutTpl">
     <div class="modal-backdrop">
       <div class="modal">
-        <h3>Place your order</h3>
-        <div class="field">
-          <label>Full name</label>
-          <input id="inpName" placeholder="Your name">
-        </div>
-        <div class="field">
-          <label>Phone</label>
-          <input id="inpPhone" placeholder="Mobile number">
-        </div>
-        <div class="field">
-          <label>Address</label>
-          <textarea id="inpAddr" rows="3" placeholder="Delivery address"></textarea>
-        </div>
-        <div class="field">
-          <label>Payment method (Mock)</label>
-          <select id="inpPay">
-            <option>Cash on Delivery (Mock)</option>
-            <option>UPI (Mock)</option>
-            <option>Card (Mock)</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-          <button class="btn" id="cancelBtn">Cancel</button>
-          <button class="btn btn-buy" id="confirmBtn">Confirm Order</button>
+        <h3>Checkout</h3>
+        <div class="grid-2">
+          <div>
+            <div class="field"><label>Full name</label><input id="c_name" placeholder="Name"></div>
+            <div class="field"><label>Phone</label><input id="c_phone" placeholder="Mobile"></div>
+            <div class="field"><label>Address</label><textarea id="c_addr" rows="3" placeholder="Delivery address"></textarea></div>
+
+            <div class="field"><label>Choose payment method</label>
+              <select id="c_paymethod">
+                <option value="upi">UPI (Recommended)</option>
+                <option value="cod">Cash on Delivery</option>
+                <option value="card">Card (Redirect to gateway)</option>
+              </select>
+            </div>
+
+            <div id="upiSection" style="display:block">
+              <div class="small">Enter your UPI ID (for payer) or choose to pay by scanning QR with payer app.</div>
+              <div class="field"><label>Enter your UPI ID (example: mohIT@upi)</label><input id="payer_upi" placeholder="yourupi@bank"></div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+              <button class="btn" id="closeCheckout">Cancel</button>
+              <button class="btn btn-primary" id="startPay">Proceed to Pay</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" style="padding:12px">
+              <h4>Order summary</h4>
+              <div id="miniSummary"></div>
+              <div style="margin-top:10px"><strong>Total: ₹<span id="miniTotal">0</span></strong></div>
+            </div>
+
+            <div style="height:12px"></div>
+            <div class="card" style="padding:12px">
+              <h4>UPI Payment</h4>
+              <div class="small">When you click Proceed, a UPI payment link & QR will be generated. On mobile, open using UPI intent or scan QR from another device.</div>
+              <div style="margin-top:8px" id="upiResult"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </template>
 
   <script>
-    // Simple interactivity — purely front-end demo, no real payment
-    const qtyEl = document.getElementById('quantity');
-    const totalEl = document.getElementById('total');
-    let qty = 1; const unit = 5;
-    function update(){ qtyEl.textContent = qty; totalEl.textContent = qty * unit; }
-    document.getElementById('inc').addEventListener('click',()=>{ qty++; update(); });
-    document.getElementById('dec').addEventListener('click',()=>{ if(qty>1) qty--; update(); });
+    // Sample large product list (repeat variations) — modify as needed
+    const products = [];
+    for(let i=1;i<=9;i++){
+      products.push({id:i,title:`Apple iPhone 5 - Refurb ${i}`,desc:`4-inch, 16GB, Black`,price:5,old:20000,img:'https://upload.wikimedia.org/wikipedia/commons/3/31/IPhone_5.png'});
+    }
 
-    function openOrderModal(){
-      const tpl = document.getElementById('orderModalTpl');
+    // Render products
+    const prodRoot = document.getElementById('products');
+    prodRoot.innerHTML = products.map(p=>`
+      <div class=\"card\">
+        <div class=\"product-image\"><img src=\"${p.img}\" alt=\"${p.title}\"></div>
+        <div class=\"p-title\">${p.title}</div>
+        <div class=\"p-sub\">${p.desc}</div>
+        <div style=\"display:flex;align-items:center;justify-content:space-between;margin-top:8px\">
+          <div><span class=\"price\">₹${p.price}</span><span class=\"old\">₹${p.old}</span></div>
+          <div class=\"prod-actions\">
+            <button class=\"btn\" onclick=\"addToCart(${p.id})\">Add</button>
+            <button class=\"btn btn-primary\" onclick=\"buyNow(${p.id})\">Buy</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // Cart logic
+    let cart = {};
+    function addToCart(id){
+      if(!cart[id]) cart[id]=1; else cart[id]++;
+      renderCart();
+      alert('Added to cart');
+    }
+    function buyNow(id){ if(!cart[id]) cart[id]=1; renderCart(); openCheckout(); }
+
+    function renderCart(){
+      const root = document.getElementById('cartList');
+      root.innerHTML = Object.keys(cart).map(id=>{
+        const p = products.find(x=>x.id==id);
+        return `<div class=\"cart-row\"><div>${p.title} x ${cart[id]}</div><div>₹${p.price*cart[id]}</div></div>`;
+      }).join('') || '<div class="small">Cart is empty</div>';
+      const total = Object.keys(cart).reduce((s,id)=>{ const p=products.find(x=>x.id==id); return s + p.price*cart[id]},0);
+      document.getElementById('cartTotal').textContent = total;
+    }
+
+    document.getElementById('goCheckout').addEventListener('click',()=>{
+      if(Object.keys(cart).length==0){ alert('Cart empty'); return; }
+      openCheckout();
+    });
+
+    // Checkout modal
+    function openCheckout(){
+      const tpl = document.getElementById('checkoutTpl');
       const node = tpl.content.cloneNode(true);
       document.body.appendChild(node);
-      const backdrop = document.querySelector('.modal-backdrop');
-      const cancel = document.getElementById('cancelBtn');
-      cancel.addEventListener('click',()=> backdrop.remove());
-      document.getElementById('confirmBtn').addEventListener('click',confirmOrder);
+
+      // populate summary
+      const mini = document.getElementById('miniSummary');
+      mini.innerHTML = Object.keys(cart).map(id=>{ const p=products.find(x=>x.id==id); return `<div class=\"small\">${p.title} x ${cart[id]} — ₹${p.price*cart[id]}</div>`}).join('');
+      const total = Object.keys(cart).reduce((s,id)=>{ const p=products.find(x=>x.id==id); return s + p.price*cart[id]},0);
+      document.getElementById('miniTotal').textContent = total;
+
+      // handlers
+      document.getElementById('closeCheckout').addEventListener('click',()=>{document.querySelector('.modal-backdrop').remove();});
+      const paySelect = document.getElementById('c_paymethod');
+      const upiSection = document.getElementById('upiSection');
+      paySelect.addEventListener('change',()=>{ upiSection.style.display = paySelect.value==='upi' ? 'block' : 'none'; });
+
+      document.getElementById('startPay').addEventListener('click',()=> startPayment(total));
     }
 
-    function confirmOrder(){
-      const name = document.getElementById('inpName').value.trim();
-      const phone = document.getElementById('inpPhone').value.trim();
-      const addr = document.getElementById('inpAddr').value.trim();
-      if(!name||!phone||!addr){ alert('Sab fields bhar do (mock).'); return; }
+    // Start payment — this generates a UPI deep link + QR; mobile users can open link, others can scan QR.
+    function startPayment(amount){
+      const name = document.getElementById('c_name').value.trim();
+      const phone = document.getElementById('c_phone').value.trim();
+      const addr = document.getElementById('c_addr').value.trim();
+      const payerUpi = document.getElementById('payer_upi').value.trim();
+      if(!name||!phone||!addr){ alert('Name, phone, address bharo'); return; }
+
+      const total = document.getElementById('miniTotal').textContent;
+      // NOTE: For production, DO NOT trust client-side confirmation — you must verify UPI payment on server using payment gateway webhooks or bank APIs.
+
+      // Build UPI payment URI for payee (merchant) — REPLACE merchantUpi with your real UPI id before going live
+      const merchantUpi = prompt('Enter merchant UPI id (e.g. seller@upi) — THIS WILL BE USED to generate payment link');
+      if(!merchantUpi){ alert('Merchant UPI required to proceed'); return; }
+
+      const txnNote = encodeURIComponent('Order from ShopMock');
+      const pa = encodeURIComponent(merchantUpi);
+      const pn = encodeURIComponent('ShopMock');
+      const am = encodeURIComponent(total);
+      const upiUri = `upi://pay?pa=${pa}&pn=${pn}&tn=${txnNote}&am=${am}&cu=INR`;
+      const upiIntent = `https://api.whatsapp.com/send?text=Pay%20via%20UPI:%20${encodeURIComponent(upiUri)}`; // fallback share link
+
+      // Show result in UI
+      const upiResult = document.getElementById('upiResult');
+      upiResult.innerHTML = `
+        <div class=\"small\">Merchant UPI: <strong>${merchantUpi}</strong></div>
+        <div style=\"margin-top:8px\">Open this on a UPI-enabled mobile to pay:</div>
+        <div style=\"margin-top:6px;word-break:break-all\"><a href=\"${upiUri}\">${upiUri}</a></div>
+        <div style=\"margin-top:10px\">OR scan QR from another device:</div>
+        <div style=\"margin-top:8px\"><img alt=\"QR\" src=\"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(upiUri)}\"></div>
+        <div style=\"margin-top:8px\"><button class=\"btn\" onclick=\"verifyMock()\">I have paid (click after completing UPI)</button></div>
+      `;
+
+      // On mobile, try opening UPI intent (this depends on browser/device)
+      // window.location.href = upiUri; // commented out — optional auto-redirect
+    }
+
+    // Mock verify — In production, NEVER use client-side verification. Use server webhooks / verify transaction id with bank/gateway.
+    function verifyMock(){
       // generate fake order id
-      const id = 'MOCK' + Math.floor(Math.random()*900000 + 100000);
-      // remove modal
-      const backdrop = document.querySelector('.modal-backdrop');
-      if(backdrop) backdrop.remove();
-      // show confirmation
-      const msg = `Order placed!\nOrder ID: ${id}\nName: ${name}\nItems: ${qty} x iPhone 5\nTotal: ₹${qty*unit}\n\n(Ye sirf demo hai — actual payment/process nahi hua)`;
-      alert(msg);
+      const id = 'ORD' + Math.floor(Math.random()*900000 + 100000);
+      alert(`Payment received (client-side confirmation). Order created: ${id}.
+
+***IMPORTANT*** For real payments implement server-side verification before marking order paid.`);
+      // clear cart
+      cart = {};
+      renderCart();
+      document.querySelector('.modal-backdrop').remove();
     }
 
-    document.getElementById('buyNow').addEventListener('click',openOrderModal);
-    document.getElementById('checkout').addEventListener('click',openOrderModal);
-    document.getElementById('addCart').addEventListener('click',()=> alert('Item cart me add (mock).'));
+    // initial render
+    renderCart();
+
   </script>
+
+  <!-- IMPORTANT notes for you (not code):
+    1) This page demonstrates a UI + UPI deep-link + QR generation. For real money transactions you MUST:
+       - Use a trusted payment gateway (Razorpay, PayU, Stripe India, Cashfree) or integrate bank UPI collect APIs.
+       - Create a secure backend to: create orders, store order state, generate signed payment requests, and verify transactions using gateway webhooks or bank APIs.
+       - Never trust client-side 'I have paid' — always verify payment_id/txn_id server-side before shipping.
+    2) To accept UPI directly (without gateway) use UPI intent links or show a QR (as above). But you still need server-side verification (via bank APIs) to confirm successful payment.
+    3) Replace the merchant UPI (prompted) with your registered business UPI ID before going live.
+    4) For production, add HTTPS, CSP, input validation, rate limiting, CAPTCHA on checkout to reduce fraud.
+
+    If you want, I can:
+      - Replace the client-side prompt for merchant UPI with a secure server-provided value and connect to Razorpay/Cashfree sample integration (I'll generate server & frontend code).
+      - Convert this to a React single-file preview, or add more product categories, filters, and a real admin panel.
+  -->
 </body>
-</html>
+  </html>
