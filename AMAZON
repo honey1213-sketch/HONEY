@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>iPhone — ₹5 Offer (Mock)</title>
+  <style>
+    :root{--bg:#f3f4f6;--card:#fff;--accent:#ff9900;--muted:#6b7280;--shadow:0 6px 18px rgba(15,23,42,0.08)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:var(--bg);color:#0f172a}
+    .nav{background:#232f3e;color:#fff;padding:16px 24px;display:flex;align-items:center;gap:16px}
+    .logo{font-weight:700;font-size:20px}
+    .container{max-width:1100px;margin:28px auto;padding:0 18px}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:24px}
+
+    /* Product card */
+    .card{background:var(--card);border-radius:10px;padding:18px;box-shadow:var(--shadow)}
+    .product-image{width:100%;height:320px;border-radius:8px;background:linear-gradient(180deg,#e6eefc,#f8fafc);display:flex;align-items:center;justify-content:center}
+    .product-image img{max-width:80%;max-height:80%;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.12))}
+
+    .title{font-size:20px;font-weight:700;margin:12px 0}
+    .price{font-size:28px;color:var(--accent);font-weight:800}
+    .old{font-size:14px;color:var(--muted);text-decoration:line-through;margin-left:8px}
+
+    .features{margin-top:12px;color:#111827}
+    .btn-row{display:flex;gap:12px;margin-top:18px}
+    .btn{padding:12px 16px;border-radius:8px;border:0;font-weight:700;cursor:pointer}
+    .btn-buy{background:var(--accent);color:#051923}
+    .btn-cart{background:#111827;color:#fff}
+    .note{font-size:13px;color:var(--muted);margin-top:8px}
+
+    /* Right column */
+    .details h3{margin:0 0 12px 0}
+    .detail-list{background:var(--card);padding:14px;border-radius:10px;box-shadow:var(--shadow)}
+    .meta{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef2f7}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:flex;align-items:center;justify-content:center;z-index:50}
+    .modal{width:420px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 30px 60px rgba(2,6,23,0.3)}
+    .field{display:flex;flex-direction:column;margin-bottom:12px}
+    .field label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .field input,.field textarea,.field select{padding:10px;border-radius:8px;border:1px solid #e6eef5;font-size:14px}
+    .small{font-size:12px;color:var(--muted)}
+
+    footer{text-align:center;color:var(--muted);margin-top:18px}
+
+    @media (max-width:880px){.grid{grid-template-columns:1fr;}.product-image{height:260px}}
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="logo">ShopMock</div>
+    <div style="margin-left:8px;color:#e7edf7">- Best Deals</div>
+  </div>
+
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <div class="product-image">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/IPhone_5.png" alt="iPhone 5">
+        </div>
+        <div class="title">Apple iPhone 5 — 16GB</div>
+        <div style="display:flex;align-items:center">
+          <div class="price">₹5</div>
+          <div class="old">₹20,000</div>
+        </div>
+
+        <div class="features">
+          <div class="note">Condition: New (Mock)</div>
+          <ul>
+            <li>Screen: 4-inch Retina</li>
+            <li>Storage: 16 GB</li>
+            <li>Color: Black</li>
+          </ul>
+
+          <div class="btn-row">
+            <button class="btn btn-buy" id="buyNow">Buy Now</button>
+            <button class="btn btn-cart" id="addCart">Add to Cart</button>
+          </div>
+
+          <div class="note">Note: Yeh sirf ek demo page hai — koi real payment yahan nahi hoti.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="detail-list card details">
+          <h3>Order Summary</h3>
+          <div class="meta"><div>Item</div><div>iPhone 5</div></div>
+          <div class="meta"><div>Price</div><div>₹5</div></div>
+          <div class="meta"><div>Delivery</div><div>Free (Mock)</div></div>
+          <div style="padding-top:12px">Quantity: <strong id="quantity">1</strong></div>
+
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn" id="dec">-</button>
+            <button class="btn" id="inc">+</button>
+          </div>
+
+          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+            <div class="small">Total</div>
+            <div style="font-weight:800;font-size:20px">₹<span id="total">5</span></div>
+          </div>
+
+          <div style="margin-top:16px">
+            <button class="btn btn-buy" id="checkout">Place Order</button>
+          </div>
+        </div>
+
+        <div style="height:18px"></div>
+        <div class="card">
+          <h4>Seller Info</h4>
+          <div class="small">Seller: MockSeller Pvt Ltd</div>
+          <div class="small">Ships from: India</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>© 2025 ShopMock — Demo site only. Kisi bhi payment screen ya sensitive data ko yahan submit mat karein.</footer>
+  </div>
+
+  <!-- Modal (hidden initially) -->
+  <template id="orderModalTpl">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Place your order</h3>
+        <div class="field">
+          <label>Full name</label>
+          <input id="inpName" placeholder="Your name">
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input id="inpPhone" placeholder="Mobile number">
+        </div>
+        <div class="field">
+          <label>Address</label>
+          <textarea id="inpAddr" rows="3" placeholder="Delivery address"></textarea>
+        </div>
+        <div class="field">
+          <label>Payment method (Mock)</label>
+          <select id="inpPay">
+            <option>Cash on Delivery (Mock)</option>
+            <option>UPI (Mock)</option>
+            <option>Card (Mock)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn" id="cancelBtn">Cancel</button>
+          <button class="btn btn-buy" id="confirmBtn">Confirm Order</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // Simple interactivity — purely front-end demo, no real payment
+    const qtyEl = document.getElementById('quantity');
+    const totalEl = document.getElementById('total');
+    let qty = 1; const unit = 5;
+    function update(){ qtyEl.textContent = qty; totalEl.textContent = qty * unit; }
+    document.getElementById('inc').addEventListener('click',()=>{ qty++; update(); });
+    document.getElementById('dec').addEventListener('click',()=>{ if(qty>1) qty--; update(); });
+
+    function openOrderModal(){
+      const tpl = document.getElementById('orderModalTpl');
+      const node = tpl.content.cloneNode(true);
+      document.body.appendChild(node);
+      const backdrop = document.querySelector('.modal-backdrop');
+      const cancel = document.getElementById('cancelBtn');
+      cancel.addEventListener('click',()=> backdrop.remove());
+      document.getElementById('confirmBtn').addEventListener('click',confirmOrder);
+    }
+
+    function confirmOrder(){
+      const name = document.getElementById('inpName').value.trim();
+      const phone = document.getElementById('inpPhone').value.trim();
+      const addr = document.getElementById('inpAddr').value.trim();
+      if(!name||!phone||!addr){ alert('Sab fields bhar do (mock).'); return; }
+      // generate fake order id
+      const id = 'MOCK' + Math.floor(Math.random()*900000 + 100000);
+      // remove modal
+      const backdrop = document.querySelector('.modal-backdrop');
+      if(backdrop) backdrop.remove();
+      // show confirmation
+      const msg = `Order placed!\nOrder ID: ${id}\nName: ${name}\nItems: ${qty} x iPhone 5\nTotal: ₹${qty*unit}\n\n(Ye sirf demo hai — actual payment/process nahi hua)`;
+      alert(msg);
+    }
+
+    document.getElementById('buyNow').addEventListener('click',openOrderModal);
+    document.getElementById('checkout').addEventListener('click',openOrderModal);
+    document.getElementById('addCart').addEventListener('click',()=> alert('Item cart me add (mock).'));
+  </script>
+</body>
+</html>
