@@ -3,84 +3,101 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Secure Login</title>
+    <title>Secure Bank Login</title>
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f1f3f4;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            background: linear-gradient(135deg, #001f3f, #003366, #004c99);
+            background-size: 400% 400%;
+            animation: bgMove 12s infinite alternate ease-in-out;
         }
 
-        .login-box {
-            background: white;
-            width: 350px;
+        @keyframes bgMove {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        .card {
+            width: 360px;
             padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.11);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(0,0,0,0.3);
+            color: white;
             text-align: center;
+            animation: fadeIn 1s ease;
         }
 
-        .login-box h2 {
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: bold;
             margin-bottom: 20px;
-            color: #202124;
-            font-weight: 500;
         }
 
         input[type="password"] {
             width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 1px solid #dadce0;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 14px;
+            margin: 12px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
         }
 
         button {
             width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: white;
+            padding: 14px;
+            background: #00ccff;
             border: none;
-            border-radius: 6px;
-            font-size: 15px;
+            color: #001f3f;
+            font-size: 16px;
+            border-radius: 8px;
             cursor: pointer;
-        }
-
-        .result-box {
-            display: none;
-            background: white;
-            width: 350px;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.11);
-            text-align: center;
-        }
-
-        .balance {
-            font-size: 22px;
             font-weight: bold;
-            margin-top: 10px;
-            color: #0d652d;
+            transition: .3s;
+        }
+
+        button:hover {
+            background: white;
+        }
+
+        .balance-box {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            animation: glow 1.5s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 5px cyan; }
+            to { text-shadow: 0 0 15px cyan; }
         }
 
     </style>
 </head>
 <body>
 
-    <div class="login-box" id="loginBox">
-        <h2>Enter Password</h2>
-        <input id="passInput" type="password" placeholder="Password" />
-        <button onclick="login()">Login</button>
+    <div class="card" id="loginCard">
+        <div class="title">Bank Secure Login</div>
+        <input id="passInput" type="password" placeholder="Enter Password" />
+        <button onclick="checkPass()">Access Account</button>
     </div>
 
-    <div class="result-box" id="resultBox">
-        <h2 id="userName"></h2>
-        <p class="balance" id="balance"></p>
+    <div class="card" id="resultCard" style="display:none;">
+        <div class="title" id="userName"></div>
+        <div class="balance-box" id="balance"></div>
     </div>
 
     <script>
@@ -90,19 +107,21 @@
             "7008": { name: "Pranay", balance: 9000 }
         };
 
-        function login() {
+        function checkPass() {
             const pass = document.getElementById("passInput").value;
+            const user = users[pass];
 
-            if (users[pass]) {
-                document.getElementById("userName").innerText = users[pass].name + " Bank Balance";
-                document.getElementById("balance").innerText = "₹ " + users[pass].balance;
+            if (user) {
+                document.getElementById("userName").innerText = user.name + " — Account Balance";
+                document.getElementById("balance").innerText = "₹ " + user.balance.toLocaleString();
 
-                document.getElementById("loginBox").style.display = "none";
-                document.getElementById("resultBox").style.display = "block";
+                document.getElementById("loginCard").style.display = "none";
+                document.getElementById("resultCard").style.display = "block";
             } else {
-                alert("Wrong Password");
+                alert("Invalid Password");
             }
         }
     </script>
+
 </body>
 </html>
