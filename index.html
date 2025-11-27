@@ -3,111 +3,173 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prime Bank Panel</title>
+    <title>Prime Bank Vertical Dashboard</title>
 
     <style>
         body {
             margin: 0;
             font-family: 'Poppins', sans-serif;
-            height: 100vh;
-            background: #0c0f1a;
+            background: #0b0e19;
+            color: white;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* Animated background */
-        .bg-animation {
+        /* FULL VERTICAL LEFT SIDEBAR */
+        .sidebar {
+            width: 300px;
+            background: #111426;
+            padding: 40px 25px;
+            box-shadow: 2px 0 25px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .sb-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            color: #00d4ff;
+        }
+
+        .sb-item {
+            margin: 12px 0;
+            padding: 14px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: .3s;
+        }
+
+        .sb-item:hover {
+            background: #1a1f38;
+        }
+
+        /* MAIN FULL VERTICAL DASHBOARD */
+        .main {
+            flex: 1;
+            padding: 35px;
+            overflow-y: auto;
+        }
+
+        .topbar {
+            font-size: 30px;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+
+        /* Vertical Cards */
+        .card {
+            background: rgba(255,255,255,0.07);
+            padding: 28px;
+            border-radius: 18px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 18px rgba(0,0,0,0.45);
+            width: 100%;
+            margin-bottom: 25px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .balance-number {
+            font-size: 50px;
+            font-weight: bold;
+            color: #00ffb3;
+            text-shadow: 0 0 12px #00ffb3;
+        }
+
+        /* Login screen */
+        .login-wrap {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, #162447, #0c0f1a);
-            animation: pulse 6s infinite alternate;
-            filter: blur(80px);
+            background: #0b0e19;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.3); }
-        }
-
-        /* Card */
-        .panel {
-            position: relative;
-            width: 420px;
+        .login-box {
+            width: 380px;
+            background: rgba(255,255,255,0.08);
             padding: 40px;
-            background: rgba(255, 255, 255, 0.07);
-            border-radius: 18px;
-            box-shadow: 0 0 40px rgba(0,0,0,0.6);
+            border-radius: 16px;
             backdrop-filter: blur(12px);
-            color: #fff;
-            animation: fadeIn 1s ease;
             text-align: center;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(25px); }
-            to { opacity: 1; transform: translateY(0); }
+            box-shadow: 0 0 25px rgba(0,0,0,0.5);
         }
 
         input {
             width: 100%;
             padding: 14px;
-            border-radius: 10px;
+            border-radius: 8px;
             border: none;
             margin-top: 12px;
-            font-size: 16px;
         }
 
         button {
             width: 100%;
             padding: 14px;
-            border-radius: 10px;
-            margin-top: 16px;
-            background: #00d4ff;
-            color: #000;
-            font-size: 18px;
+            border-radius: 8px;
             border: none;
+            background: #00d4ff;
             cursor: pointer;
-            font-weight: 600;
-            transition: .3s;
-        }
-
-        button:hover {
-            background: white;
-        }
-
-        /* Balance number counting animation */
-        .balance-value {
-            font-size: 40px;
+            margin-top: 16px;
+            font-size: 18px;
             font-weight: bold;
-            margin-top: 20px;
-            color: #00ffb3;
-            text-shadow: 0 0 15px #00ffb3;
-        }
-
-        .username {
-            font-size: 24px;
-            margin-top: 15px;
-            font-weight: 600;
         }
 
     </style>
 </head>
 <body>
 
-<div class="bg-animation"></div>
-
-<div class="panel" id="loginPanel">
-    <h2>Secure Bank Login</h2>
-    <input id="passInput" type="password" placeholder="Enter Password">
-    <button onclick="login()">Proceed</button>
+<!-- Login Screen -->
+<div class="login-wrap" id="loginWrap">
+    <div class="login-box">
+        <h2>Bank Secure Login</h2>
+        <input id="passInput" type="password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+    </div>
 </div>
 
-<div class="panel" id="resultPanel" style="display:none;">
-    <div class="username" id="userName"></div>
-    <div class="balance-value" id="balance">₹0</div>
+<!-- FULL VERTICAL SIDEBAR -->
+<div class="sidebar" id="sidebar" style="display:none;">
+    <div class="sb-title" id="userName">User</div>
+    <div class="sb-item">🏦 Dashboard</div>
+    <div class="sb-item">💰 Transactions</div>
+    <div class="sb-item">📄 Statements</div>
+    <div class="sb-item">💳 Cards</div>
+    <div class="sb-item">⚙️ Settings</div>
+    <div class="sb-item">📞 Support</div>
+</div>
+
+<!-- MAIN VERTICAL DASHBOARD -->
+<div class="main" id="mainPanel" style="display:none;">
+    <div class="topbar">Dashboard Overview</div>
+
+    <div class="card">
+        <div class="card-title">Available Balance</div>
+        <div class="balance-number" id="balanceNumber">₹0</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Account Type</div>
+        <div style="font-size: 26px; opacity: 0.9;">Savings Account</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Last Login</div>
+        <div style="font-size: 20px; opacity: .8;">Just Now</div>
+    </div>
+
 </div>
 
 <script>
@@ -118,17 +180,17 @@
     };
 
     function animateBalance(finalValue) {
-        let value = 0;
-        let speed = Math.ceil(finalValue / 50);
+        let num = 0;
+        let speed = Math.ceil(finalValue / 60);
 
         const interval = setInterval(() => {
-            value += speed;
-            if (value >= finalValue) {
-                value = finalValue;
+            num += speed;
+            if (num >= finalValue) {
+                num = finalValue;
                 clearInterval(interval);
             }
-            document.getElementById("balance").innerText = "₹ " + value.toLocaleString();
-        }, 30);
+            document.getElementById("balanceNumber").innerText = "₹ " + num.toLocaleString();
+        }, 25);
     }
 
     function login() {
@@ -136,12 +198,14 @@
         const user = users[pass];
 
         if (user) {
-            document.getElementById("loginPanel").style.display = "none";
-            document.getElementById("resultPanel").style.display = "block";
-            document.getElementById("userName").innerText = user.name + " — Account Balance";
+            document.getElementById("loginWrap").style.display = "none";
+            document.getElementById("sidebar").style.display = "flex";
+            document.getElementById("mainPanel").style.display = "block";
+
+            document.getElementById("userName").innerText = user.name;
             animateBalance(user.balance);
         } else {
-            alert("Incorrect Password!");
+            alert("Incorrect Password");
         }
     }
 </script>
