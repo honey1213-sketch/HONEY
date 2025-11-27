@@ -1,224 +1,147 @@
-<!doctype html>
-<html lang="hi">
+<!-- Full Vertical Bank Dashboard (No Password, No Transactions) -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Prime Balance Panel</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bank Dashboard</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins';}
-body{
-  display:flex;
-  height:100vh;
-  background:#0a0f1c;
-  color:white;
-  overflow:hidden;
-}
+    body {
+        margin: 0;
+        background: linear-gradient(135deg, #0a0f24, #020410);
+        font-family: Arial, sans-serif;
+        color: white;
+        height: 100vh;
+        overflow: hidden;
+    }
 
-/* ---------- SIDEBAR ---------- */
+    .sidebar {
+        width: 260px;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        padding: 20px;
+        position: fixed;
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
 
-.sidebar{
-  width:260px;
-  background:#0f1628;
-  padding:20px;
-  display:flex;
-  flex-direction:column;
-  gap:20px;
-  border-right:1px solid rgba(255,255,255,0.05);
-}
+    .sidebar h2 {
+        margin-top: 0;
+        font-size: 28px;
+        letter-spacing: 1px;
+    }
 
-.logo{
-  font-size:26px;
-  font-weight:700;
-  text-align:center;
-}
+    .user-btn {
+        padding: 15px;
+        font-size: 18px;
+        margin: 14px 0;
+        width: 100%;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
 
-.user-list{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
+    .user-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
 
-.user{
-  background:#121a30;
-  padding:14px;
-  border-radius:10px;
-  cursor:pointer;
-  transition:.2s;
-}
-.user:hover{
-  transform:translateX(6px);
-  background:#18223a;
-}
-.user.active{
-  background:#1f2d4f;
-  border:1px solid rgba(255,255,255,0.1);
-}
+    .main {
+        margin-left: 300px;
+        padding: 40px;
+    }
 
-/* ---------- MAIN AREA ---------- */
+    .card {
+        background: rgba(255, 255, 255, 0.07);
+        padding: 30px;
+        border-radius: 18px;
+        width: 420px;
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(12px);
+    }
 
-.main{
-  flex:1;
-  padding:30px;
-  overflow-y:auto;
-}
+    .name {
+        font-size: 30px;
+        margin-bottom: 10px;
+    }
 
-.heading{
-  font-size:24px;
-  font-weight:700;
-}
+    .balance {
+        font-size: 42px;
+        font-weight: bold;
+        margin-top: 20px;
+    }
 
-.card{
-  margin-top:20px;
-  background:#10192e;
-  border-radius:14px;
-  padding:22px;
-  border:1px solid rgba(255,255,255,0.05);
-  box-shadow:0 8px 25px rgba(0,0,0,0.3);
-}
+    .tag {
+        margin-top: 10px;
+        padding: 8px 15px;
+        display: inline-block;
+        border-radius: 8px;
+        font-size: 18px;
+    }
 
-.balance{
-  font-size:44px;
-  font-weight:800;
-  margin-top:10px;
-}
-
-.status{
-  margin-top:12px;
-  display:inline-block;
-  padding:8px 16px;
-  border-radius:20px;
-  font-weight:700;
-}
-
-.low{background:#f43f5e;color:#230005;}
-.med{background:#f59e0b;color:#251200;}
-.high{background:#4ade80;color:#00250d;}
-
-.tx-title{
-  margin-top:20px;
-  font-weight:600;
-  font-size:15px;
-  color:#9bb2d4;
-}
-
-.tx-list{
-  margin-top:10px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.tx{
-  background:#15203b;
-  padding:14px;
-  border-radius:10px;
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
-}
-
-/* MOBILE */
-@media(max-width:800px){
-  .sidebar{width:200px;}
-  .balance{font-size:32px;}
-}
+    .low { background: #d62828; }
+    .medium { background: #f4a261; }
+    .high { background: #2a9d8f; }
 </style>
 </head>
-
 <body>
 
 <div class="sidebar">
-  <div class="logo">Prime Bank</div>
-
-  <div class="user-list" id="userList"></div>
+    <h2>Dashboard</h2>
+    <button class="user-btn" onclick="showBalance('Kartikey', 20000)">Kartikey</button>
+    <button class="user-btn" onclick="showBalance('Ramshankar', 7999)">Ramshankar</button>
+    <button class="user-btn" onclick="showBalance('Pranay', 9000)">Pranay</button>
 </div>
 
 <div class="main">
-  <div class="heading" id="userTitle">Select a user</div>
-
-  <div class="card" id="cardBox" style="display:none">
-    <div id="balanceLabel" style="font-size:18px;color:#9bb2d4;">Account Balance</div>
-    <div class="balance" id="balanceAmount">₹0</div>
-
-    <div id="statusBadge" class="status"></div>
-
-    <div class="tx-title">Recent Transactions</div>
-    <div id="txList" class="tx-list"></div>
-  </div>
+    <div class="card" id="infoCard">
+        <div class="name">Select a User</div>
+        <div class="balance">—</div>
+        <div class="tag"></div>
+    </div>
 </div>
 
 <script>
-const users = [
-  { id:"kart",  name:"Kartikey",   balance:20000 },
-  { id:"ram",   name:"Ramshankar", balance:7999 },
-  { id:"pra",   name:"Pranay",     balance:9000 }
-];
+function showBalance(name, amount) {
+    const card = document.getElementById("infoCard");
+    const nameBox = card.querySelector('.name');
+    const balanceBox = card.querySelector('.balance');
+    const tagBox = card.querySelector('.tag');
 
-const userList = document.getElementById('userList');
-const userTitle = document.getElementById('userTitle');
-const cardBox = document.getElementById('cardBox');
-const balanceAmount = document.getElementById('balanceAmount');
-const statusBadge = document.getElementById('statusBadge');
-const txList = document.getElementById('txList');
+    nameBox.innerText = name;
 
-/* Sidebar listing */
-users.forEach(u=>{
-  const div = document.createElement('div');
-  div.className='user';
-  div.innerText = u.name;
-  div.onclick = ()=>selectUser(u, div);
-  userList.appendChild(div);
-});
+    let tag = "";
+    let cls = "";
 
-/* On click user */
-function selectUser(u, box){
-  document.querySelectorAll('.user').forEach(x=>x.classList.remove('active'));
-  box.classList.add('active');
+    if (amount < 5000) {
+        tag = "LOW";
+        cls = "low";
+    } else if (amount < 15000) {
+        tag = "MEDIUM";
+        cls = "medium";
+    } else {
+        tag = "HIGH";
+        cls = "high";
+    }
 
-  userTitle.innerText = u.name + " — Balance Details";
-  cardBox.style.display="block";
+    tagBox.className = "tag " + cls;
+    tagBox.innerText = tag;
 
-  animateBalance(u.balance);
+    let start = 0;
+    let end = amount;
+    let speed = 20;
 
-  const level = u.balance>=15000 ? "high" : u.balance>=8000 ? "med" : "low";
-  statusBadge.className="status "+level;
-  statusBadge.innerText = level.toUpperCase();
-
-  loadTx(u.balance);
-}
-
-/* Balance counting animation */
-function animateBalance(target){
-  let start = 0;
-  let duration = 900;
-  let stepTime = 15;
-  let steps = duration/stepTime;
-  let increment = target/steps;
-
-  let x = setInterval(()=>{
-    start += increment;
-    if(start >= target){ start = target; clearInterval(x); }
-    balanceAmount.innerText = "₹ " + Math.floor(start).toLocaleString();
-  }, stepTime);
-}
-
-/* Auto 3 random transactions */
-function loadTx(bal){
-  txList.innerHTML = "";
-  const labels = ["UPI Payment","Recharge","Shopping","Transfer","Food"];
-  for(let i=0;i<3;i++){
-    const amt = Math.round((Math.random()*0.15)*bal);
-    const div = document.createElement('div');
-    div.className="tx";
-    div.innerHTML = `
-      <div>${labels[Math.floor(Math.random()*labels.length)]}</div>
-      <div>₹${amt}</div>
-    `;
-    txList.appendChild(div);
-  }
+    let counter = setInterval(() => {
+        start += Math.ceil(end / 40);
+        if (start >= end) {
+            start = end;
+            clearInterval(counter);
+        }
+        balanceBox.innerText = "₹ " + start.toLocaleString();
+    }, speed);
 }
 </script>
 
