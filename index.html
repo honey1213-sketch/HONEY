@@ -1,253 +1,185 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="hi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alisha और Rajat - हमारी कहानी</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-    body { background: #fff0f8; color: #333; line-height: 1.6; }
-
-    /* Header / Hero */
-    .hero {
-      position: relative;
-      width: 100%;
-      height: 100vh;
-      background: url('https://i.imgur.com/p9qJNpV.jpeg') center/cover no-repeat;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-    }
-    .hero-content {
-      position: relative;
-      z-index: 2;
-      color: white;
-      padding: 0 20px;
-    }
-    .hero-content h1 {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      animation: fadeIn 2s ease-in-out;
-    }
-    .hero-content p {
-      font-size: 1.6rem;
-      animation: fadeIn 3s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Sections */
-    .section {
-      padding: 80px 20px;
-      max-width: 1000px;
-      margin: auto;
-    }
-    .section-heading {
-      font-size: 2.5rem;
-      color: #d63384;
-      text-align: center;
-      margin-bottom: 40px;
-    }
-
-    /* Message Card */
-    .message-card {
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-      padding: 30px;
-      margin-bottom: 40px;
-    }
-    .message-card p {
-      font-size: 1.2rem;
-    }
-
-    /* Timeline */
-    .timeline {
-      position: relative;
-      margin: 40px 0;
-      padding-left: 50px;
-      border-left: 4px solid #d63384;
-    }
-    .timeline-item {
-      position: relative;
-      margin-bottom: 40px;
-    }
-    .timeline-item::before {
-      content: '❤️';
-      position: absolute;
-      left: -32px;
-      top: 0;
-      font-size: 1.5rem;
-    }
-    .timeline-item h3 {
-      font-size: 1.6rem;
-      margin-bottom: 10px;
-      color: #b3125b;
-    }
-    .timeline-item p {
-      font-size: 1.1rem;
-    }
-
-    /* Gallery */
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 20px;
-    }
-    .gallery img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-      transition: transform .3s;
-    }
-    .gallery img:hover {
-      transform: scale(1.05);
-    }
-
-    /* Love Letter */
-    .letter {
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-      font-size: 1.1rem;
-      line-height: 1.8;
-      margin-bottom: 40px;
-    }
-
-    /* Footer */
-    footer {
-      background: #d63384;
-      color: white;
-      text-align: center;
-      padding: 40px 20px;
-      font-size: 1.2rem;
-    }
-
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bank Dashboard — Random Demo</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --accent:#06b6d4;
+    --muted: rgba(255,255,255,0.6);
+  }
+  body{
+    margin:0;
+    font-family:Inter,system-ui;
+    background:var(--bg);
+    color:white;
+    display:flex;
+    justify-content:center;
+    padding:30px;
+  }
+  .dashboard{
+    width:100%;
+    max-width:1050px;
+    padding:25px;
+    border-radius:14px;
+    background:#0c1424;
+    border:1px solid rgba(255,255,255,0.05);
+  }
+  h1{margin:0;font-size:22px;}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:18px;
+    margin-top:20px;
+  }
+  .card{
+    background:#111a2e;
+    padding:18px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.04);
+    position:relative;
+    overflow:hidden;
+  }
+  .profile{display:flex;align-items:center;gap:14px}
+  .avatar{
+    width:48px;height:48px;border-radius:12px;
+    background:#0e1628;
+    display:grid;place-items:center;font-size:18px;font-weight:700;
+  }
+  .meta p{margin:0;color:var(--muted);font-size:13px}
+  .balance{
+    margin-top:18px;
+    font-size:30px;
+    font-weight:700;
+  }
+  .small{font-size:13px;color:var(--muted)}
+  .ticker{
+    position:absolute;left:-20%;bottom:6px;width:140%;height:6px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.15));
+    transform:skewX(-12deg);
+    animation: slide 6s linear infinite;
+    opacity:0.4;border-radius:6px;
+  }
+  @keyframes slide{
+    0%{transform:translateX(-100%) skewX(-12deg)}
+    100%{transform:translateX(100%) skewX(-12deg)}
+  }
+  .btn{
+    border:1px solid rgba(255,255,255,0.07);
+    background:#0f1a32;
+    padding:8px 13px;
+    border-radius:8px;
+    cursor:pointer;
+    color:white;
+    font-weight:600;
+  }
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+  }
+</style>
 </head>
-
 <body>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-content">
-      <h1>Alisha, तुम मेरी दुनिया हो</h1>
-      <p>तुम्हारे लिए Rajat की ये छोटी सी वेबसाइट, सिर्फ और सिर्फ 💖</p>
-    </div>
-  </section>
+<div class="dashboard">
+  <div class="topbar">
+    <h1>Bank Dashboard — Random Demo</h1>
+    <button id="sound" class="btn">🔊 Enable Sound</button>
+  </div>
 
-  <!-- My Message to You -->
-  <section class="section">
-    <h2 class="section-heading">मेरी Feelings तुम्हारे लिए</h2>
-    <div class="message-card">
-      <p>
-        प्यारी अलिशा, जब से तुम मेरी जिंदगी में आई हो,  
-        हर सुबह सुहानी लगती है,  
-        हर शाम खूबसूरत होती है।  
-        तुम्हारी हँसी मेरे दिल की धड़कन बढ़ा देती है,  
-        और तुम्हारी आवाज़ मेरी आत्मा को सुकून देती है।  
-        तुम सिर्फ मेरी गर्लफ्रेंड नहीं,  
-        मेरी सबसे अच्छी दोस्त, मेरी साथी हो।  
-        मैं हर दिन बस तुम्हारे साथ अपनी ज़िन्दगी बिताना चाहता हूँ।  
-        ❤️ Rajat
-      </p>
-    </div>
-  </section>
+  <div class="grid">
 
-  <!-- Timeline -->
-  <section class="section">
-    <h2 class="section-heading">हमारी Journey</h2>
-    <div class="timeline">
-      <div class="timeline-item">
-        <h3>पहली नज़र</h3>
-        <p>उस दिन जब मैंने पहली बार तुम्हें देखा था … मेरी दुनिया बदल गई थी।</p>
+    <div class="card" data-name="Kartikey">
+      <div class="profile">
+        <div class="avatar">K</div>
+        <div class="meta">
+          <h3>Kartikey</h3>
+          <p>Account •••• ••••</p>
+        </div>
       </div>
-      <div class="timeline-item">
-        <h3>हमारी पहली बात</h3>
-        <p>हमारी पहली चैट, वो छोटी‑छोटी बातें, जो मुझे आज भी याद हैं।</p>
-      </div>
-      <div class="timeline-item">
-        <h3>जब तुम मेरी बनी</h3>
-        <p>तुम्हारे साथ बिताये गए वो यादगार पल, जिससे पता चला कि मैं तुम्हारे बिना अधूरा हूँ।</p>
-      </div>
-      <div class="timeline-item">
-        <h3>हमारी मजबूती</h3>
-        <p>हर तूफान ने हमें और नज़दीक लाया, और हम साथ खड़े रहे।</p>
-      </div>
-      <div class="timeline-item">
-        <h3>हमारा भविष्य</h3>
-        <p>मैं तुम्हारे साथ एक ऐसी जिंदगी बनाना चाहता हूँ, जिससे हमारी कहानी हमेशा चले … हमेशा तुम + मैं।</p>
-      </div>
+      <div class="small">Balance</div>
+      <div class="balance">₹0</div>
+      <div class="ticker"></div>
     </div>
-  </section>
 
-  <!-- Gallery -->
-  <section class="section">
-    <h2 class="section-heading">हमारी यादें</h2>
-    <div class="gallery">
-      <img src="https://i.imgur.com/Vp4Rk6i.jpeg" alt="Couple Photo 1">
-      <img src="https://i.imgur.com/XWN8Xk3.jpeg" alt="Couple Photo 2">
-      <img src="https://i.imgur.com/zfWdvdr.jpeg" alt="Couple Photo 3">
-      <img src="https://i.imgur.com/L82G70E.jpeg" alt="Couple Photo 4">
-      <img src="https://i.imgur.com/B2EoRdn.jpeg" alt="Couple Photo 5">
-      <img src="https://i.imgur.com/LntUQ8l.jpeg" alt="Couple Photo 6">
+    <div class="card" data-name="Ramshankar">
+      <div class="profile">
+        <div class="avatar">R</div>
+        <div class="meta">
+          <h3>Ramshankar</h3>
+          <p>Account •••• ••••</p>
+        </div>
+      </div>
+      <div class="small">Balance</div>
+      <div class="balance">₹0</div>
+      <div class="ticker"></div>
     </div>
-  </section>
 
-  <!-- Romantic Letter -->
-  <section class="section">
-    <h2 class="section-heading">मेरी यादों का ख़त</h2>
-    <div class="letter">
-      <p>
-        मेरी प्यारी Alisha,<br><br>
-        तुम मेरी ज़िन्दगी की वो खूबसूरत कविता हो, जिसे मैं हर रोज़ पढ़ना चाहता हूँ।  
-        तुम मेरे दिल की धड़कन हो, मेरी खुशी की वजह हो, और मेरी सबसे बड़ी ताकत हो।  
-        तुम्हारे साथ बिताया हर पल मेरे लिए अनमोल है।  
-        तुम्हारी मुस्कान मेरे लिए सूरज की किरण की तरह है,  
-        और तुम्हारी आँखों में मैं खुद को पाता हूँ।<br><br>
-        मैं वादा करता हूँ कि मैं हमेशा तुम्हारा साथ दूँगा,  
-        तुम्हारी खुशियों में शामिल रहूँगा,  
-        그리고 तुम्हारे हर सपने को सच करने की कोशिश करूँगा।<br><br>
-        तुम्हारा हमेशा,  
-        ❤️ Rajat
-      </p>
+    <div class="card" data-name="Pranay">
+      <div class="profile">
+        <div class="avatar">P</div>
+        <div class="meta">
+          <h3>Pranay</h3>
+          <p>Account •••• ••••</p>
+        </div>
+      </div>
+      <div class="small">Balance</div>
+      <div class="balance">₹0</div>
+      <div class="ticker"></div>
     </div>
-  </section>
 
-  <!-- More Romantic Images (Using Free Stock) -->
-  <section class="section">
-    <h2 class="section-heading">खूबसूरत तस्वीरें</h2>
-    <div class="gallery">
-      <!-- कुछ royalty-free images from Pixabay / Unsplash -->
-      <img src="https://cdn.pixabay.com/photo/2017/08/06/06/58/couple-2591754_1280.jpg" alt="Couple Romantic">
-      <img src="https://cdn.pixabay.com/photo/2015/03/26/10/01/couple-690176_1280.jpg" alt="Love Couple">
-      <img src="https://cdn.pixabay.com/photo/2018/07/01/20/14/couple-3501712_1280.jpg" alt="Romantic Couple">
-      <img src="https://cdn.pixabay.com/photo/2016/11/29/03/27/couple-1869610_1280.jpg" alt="Couple Silhouette">
-      <img src="https://cdn.pixabay.com/photo/2017/06/07/19/52/couple-2383915_1280.jpg" alt="Loving Couple">
-      <img src="https://cdn.pixabay.com/photo/2014/09/07/21/51/couple-438647_1280.jpg" alt="Romance">
-    </div>
-    <p style="text-align:center; margin-top:20px; color:#666; font-size:0.9rem;">
-      इमेजेज़ स्रोत: Pixabay। :contentReference[oaicite:0]{index=0}
-    </p>
-  </section>
+  </div>
+</div>
 
-  <!-- Footer -->
-  <footer>
-    यह वेबसाइट खास तौर पर <b>Alisha</b> के लिए, <br>तुम्हारा Rajat ❤️  
-  </footer>
+<audio id="beep">
+  <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=">
+</audio>
+
+<script>
+function randomBalance(){
+  return Math.floor(1000 + Math.random()*90000);
+}
+
+const cards=document.querySelectorAll('.card');
+const sound=document.getElementById('sound');
+const beep=document.getElementById('beep');
+let soundOn=false;
+
+function animate(el,target){
+  let start=0;
+  const duration=1000;
+  const startTime=performance.now();
+  function step(t){
+    const p=Math.min((t-startTime)/duration,1);
+    const n=Math.floor(start+(target-start)*(p));
+    el.textContent='₹'+n.toLocaleString('en-IN');
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function updateAll(){
+  cards.forEach(c=>{
+    const bal=c.querySelector('.balance');
+    const newVal=randomBalance();
+    animate(bal,newVal);
+    c.dataset.realBalance=newVal;
+
+    if(soundOn) beep.play();
+  });
+}
+
+updateAll();
+setInterval(updateAll,4000);
+
+sound.addEventListener('click',()=>{
+  soundOn=!soundOn;
+  sound.textContent=soundOn?"🔊 Sound On":"🔇 Enable Sound";
+  if(soundOn) beep.play();
+});
+</script>
 
 </body>
 </html>
