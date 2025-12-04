@@ -36,23 +36,23 @@ select,.input{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:
 <div class="header">KRP BANK</div>
 <div class="user-list" id="userList"></div>
 <div class="card" id="infoCard">
-  <div class="name" id="cardName">Choose User</div>
-  <div class="balance" id="cardBalance">—</div>
-  <div class="tag" id="cardTag"></div>
-  <button class="send-btn" id="openSendBtn">Send Money</button>
+  <div class="name" id="cardName">Choose User</div>
+  <div class="balance" id="cardBalance">—</div>
+  <div class="tag" id="cardTag"></div>
+  <button class="send-btn" id="openSendBtn">Send Money</button>
 </div>
 <div class="popup" id="sendPopup">
-  <div class="popup-box">
-    <h3>Send Money</h3>
-    <label>From</label>
-    <select id="senderSelect"></select>
-    <label>To</label>
-    <select id="receiverSelect"></select>
-    <input id="amount" class="input" type="number" placeholder="Amount" />
-    <input id="pin" class="input" type="password" placeholder="PIN" />
-    <button class="send-btn" id="confirmBtn">Confirm</button>
-    <button class="send-btn" id="cancelBtn" style="background:#444;margin-top:8px;">Cancel</button>
-  </div>
+  <div class="popup-box">
+    <h3>Send Money</h3>
+    <label>From</label>
+    <select id="senderSelect"></select>
+    <label>To</label>
+    <select id="receiverSelect"></select>
+    <input id="amount" class="input" type="number" placeholder="Amount" />
+    <input id="pin" class="input" type="password" placeholder="PIN" />
+    <button class="send-btn" id="confirmBtn">Confirm</button>
+    <button class="send-btn" id="cancelBtn" style="background:#444;margin-top:8px;">Cancel</button>
+  </div>
 </div>
 <div class="transfer-anim" id="transferAnim">Sending...</div>
 <div class="history-panel" id="historyPanel"><h4>Transaction History</h4></div>
@@ -69,103 +69,127 @@ if(!history){history=[]; localStorage.setItem('krp_history',JSON.stringify(histo
 
 let current=null;
 
+// Add Bank user
+const bankName = 'BANK';
+if (!balances[bankName]) {
+    balances[bankName] = 100000;
+    localStorage.setItem('krp_balances', JSON.stringify(balances));
+    users.push(bankName);
+    pins[bankName] = '0000'; // optional PIN
+}
+
 function saveBalances(){localStorage.setItem('krp_balances',JSON.stringify(balances));}
 function saveHistory(){localStorage.setItem('krp_history',JSON.stringify(history)); renderHistory();}
 function formatRs(n){return '₹ '+Number(n).toLocaleString();}
 
 function renderUsers(){
-  const container=document.getElementById('userList'); container.innerHTML='';
-  users.forEach(u=>{
-    const btn=document.createElement('button'); btn.className='user-btn'; btn.textContent=u;
-    btn.addEventListener('click',()=>selectUser(u,btn));
-    container.appendChild(btn);
-  });
+  const container=document.getElementById('userList'); container.innerHTML='';
+  users.forEach(u=>{
+    const btn=document.createElement('button'); btn.className='user-btn'; btn.textContent=u;
+    btn.addEventListener('click',()=>selectUser(u,btn));
+    container.appendChild(btn);
+  });
 }
 function selectUser(name,btn){
-  current=name;
-  document.querySelectorAll('.user-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  renderCard(); renderHistory();
+  current=name;
+  document.querySelectorAll('.user-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderCard(); renderHistory();
 }
 function renderCard(){
-  const nameEl=document.getElementById('cardName');
-  const balEl=document.getElementById('cardBalance');
-  const tagEl=document.getElementById('cardTag');
-  if(!current){nameEl.textContent='Choose User'; balEl.textContent='—'; tagEl.textContent=''; return;}
-  nameEl.textContent=current;
-  const amt=balances[current];
-  animateNumber(balEl,parseBalance(balEl.textContent)||0,amt);
-  tagEl.className='tag '+(amt<5000?'low':amt<15000?'medium':'high');
-  tagEl.textContent=amt<5000?'LOW':amt<15000?'MEDIUM':'HIGH';
+  const nameEl=document.getElementById('cardName');
+  const balEl=document.getElementById('cardBalance');
+  const tagEl=document.getElementById('cardTag');
+  if(!current){nameEl.textContent='Choose User'; balEl.textContent='—'; tagEl.textContent=''; return;}
+  nameEl.textContent=current;
+  const amt=balances[current];
+  animateNumber(balEl,parseBalance(balEl.textContent)||0,amt);
+  tagEl.className='tag '+(amt<5000?'low':amt<15000?'medium':'high');
+  tagEl.textContent=amt<5000?'LOW':amt<15000?'MEDIUM':'HIGH';
 }
 function parseBalance(t){if(!t)return 0; const m=t.replace(/[^0-9]/g,''); return m?parseInt(m,10):0;}
 function animateNumber(el,from,to,duration=700){const start=performance.now();function step(ts){const t=Math.min(1,(ts-start)/duration); el.textContent=formatRs(Math.floor(from+(to-from)*t)); if(t<1) requestAnimationFrame(step);} requestAnimationFrame(step);}
 
 // Popup handling
 document.getElementById('openSendBtn').addEventListener('click',()=>{
-  if(!current)return showToast('Select a user first');
-  const s=document.getElementById('senderSelect'); const r=document.getElementById('receiverSelect');
-  s.innerHTML=''; r.innerHTML='';
-  users.forEach(u=>{
-    const o1=document.createElement('option');o1.value=u;o1.text=`${u} — ${formatRs(balances[u])}`; s.appendChild(o1);
-    const o2=document.createElement('option');o2.value=u;o2.text=`${u} — ${formatRs(balances[u])}`; r.appendChild(o2);
-  });
-  s.value=current;
-  document.getElementById('sendPopup').style.display='flex';
+  if(!current)return showToast('Select a user first');
+  const s=document.getElementById('senderSelect'); const r=document.getElementById('receiverSelect');
+  s.innerHTML=''; r.innerHTML='';
+  users.forEach(u=>{
+    const o1=document.createElement('option');o1.value=u;o1.text=`${u} — ${formatRs(balances[u])}`; s.appendChild(o1);
+    const o2=document.createElement('option');o2.value=u;o2.text=`${u} — ${formatRs(balances[u])}`; r.appendChild(o2);
+  });
+  s.value=current;
+  document.getElementById('sendPopup').style.display='flex';
 });
 document.getElementById('cancelBtn').addEventListener('click',()=>document.getElementById('sendPopup').style.display='none');
 function showToast(msg,time=2600){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),time);}
 
 // Confirm transfer
 document.getElementById('confirmBtn').addEventListener('click',()=>{
-  const sender=document.getElementById('senderSelect').value;
-  const receiver=document.getElementById('receiverSelect').value;
-  const amount=Number(document.getElementById('amount').value);
-  const pin=document.getElementById('pin').value;
-  if(!sender||!receiver)return showToast('Select sender and receiver');
-  if(sender===receiver)return showToast('Cannot send to self');
-  if(pin!==pins[sender])return showToast('Incorrect PIN for '+sender);
-  if(!amount||amount<=0)return showToast('Enter valid amount');
-  if(amount>balances[sender])return showToast('Insufficient balance');
+  const sender=document.getElementById('senderSelect').value;
+  const receiver=document.getElementById('receiverSelect').value;
+  const amount=Number(document.getElementById('amount').value);
+  const pin=document.getElementById('pin').value;
+  if(!sender||!receiver)return showToast('Select sender and receiver');
+  if(sender===receiver)return showToast('Cannot send to self');
+  if(sender!==bankName && pin!==pins[sender])return showToast('Incorrect PIN for '+sender);
+  if(!amount||amount<=0)return showToast('Enter valid amount');
+  if(sender!==bankName && amount>balances[sender])return showToast('Insufficient balance');
 
-  document.getElementById('sendPopup').style.display='none';
-  const anim=document.getElementById('transferAnim'); anim.textContent=`${sender} → ${receiver}`; anim.style.display='block';
-  setTimeout(()=>{
-    const prevS=balances[sender], prevR=balances[receiver];
-    balances[sender]-=amount; balances[receiver]+=amount;
-    saveBalances();
-    if(current===sender)animateNumber(document.getElementById('cardBalance'),prevS,balances[sender]);
-    else if(current===receiver)animateNumber(document.getElementById('cardBalance'),prevR,balances[receiver]);
-    const txn={sender,receiver,amount,time:new Date().toLocaleString()}; history.push(txn);
-    saveHistory();
-    showReceipt(sender,receiver,amount);
-    setTimeout(()=>anim.style.display='none',900);
-  },500);
-  document.getElementById('amount').value=''; document.getElementById('pin').value='';
+  document.getElementById('sendPopup').style.display='none';
+  const anim=document.getElementById('transferAnim'); anim.textContent=`${sender} → ${receiver}`; anim.style.display='block';
+  setTimeout(()=>{
+    const prevS=balances[sender], prevR=balances[receiver];
+
+    // Only update balance if sender is not BANK
+    if(sender!==bankName) balances[sender]-=amount;
+    balances[receiver]+=amount;
+
+    saveBalances();
+    if(current===sender)animateNumber(document.getElementById('cardBalance'),prevS,balances[sender]);
+    else if(current===receiver)animateNumber(document.getElementById('cardBalance'),prevR,balances[receiver]);
+
+    const txn={sender,receiver,amount,time:new Date().toLocaleString()}; history.push(txn);
+    saveHistory();
+
+    // Show receipt with special BANK rules
+    showReceipt(sender,receiver,amount);
+
+    setTimeout(()=>anim.style.display='none',900);
+  },500);
+  document.getElementById('amount').value=''; document.getElementById('pin').value='';
 });
 
 function showReceipt(sender,receiver,amount){
-  const r=document.createElement('div'); r.className='receipt';
-  const now=new Date();
-  r.innerHTML=`<h4>KRP BANK RECEIPT</h4><div class='small'>${now.toLocaleString()}</div><pre>-------------------------------------</pre>
-  <div><strong>FROM:</strong> ${sender}</div><div><strong>TO:</strong> ${receiver}</div>
-  <div class='amount'>${formatRs(amount)}</div><pre>-------------------------------------</pre>
-  <div style='text-align:center;margin-top:8px;font-weight:800'>Payment Successful ✓</div>`;
-  document.body.appendChild(r);
-  const audio=new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'); audio.play();
-  setTimeout(()=>r.remove(),5500);
+  const r=document.createElement('div'); r.className='receipt';
+  const now=new Date();
+  const errorFromBank = sender === bankName;
+  r.innerHTML=`<h4>KRP BANK RECEIPT</h4>
+    <div class='small'>${now.toLocaleString()}</div>
+    <pre>-------------------------------------</pre>
+    <div><strong>FROM:</strong> ${sender}</div>
+    <div><strong>TO:</strong> ${receiver}</div>
+    <div class='amount'>${formatRs(amount)}</div>
+    <pre>-------------------------------------</pre>
+    <div style='text-align:center;margin-top:8px;font-weight:800'>
+      ${errorFromBank ? '❌ Error: Bank cannot send money' : 'Payment Successful ✓'}
+    </div>`;
+  document.body.appendChild(r);
+  const audio=new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'); audio.play();
+  setTimeout(()=>r.remove(),5500);
 }
 
 function renderHistory(){
-  const panel=document.getElementById('historyPanel');
-  panel.innerHTML='<h4>Transaction History</h4>';
-  const filtered=history.filter(h=>h.sender===current||h.receiver===current).slice().reverse();
-  if(filtered.length===0){panel.innerHTML+='<div>No transactions yet</div>';return;}
-  filtered.forEach(txn=>{
-    const div=document.createElement('div'); div.className='history-item';
-    div.innerHTML=`<div><strong>${txn.sender}</strong> → <strong>${txn.receiver}</strong></div><div>${formatRs(txn.amount)}</div><div style='opacity:0.7;font-size:12px'>${txn.time}</div>`;
-    panel.appendChild(div);
-  });
+  const panel=document.getElementById('historyPanel');
+  panel.innerHTML='<h4>Transaction History</h4>';
+  const filtered=history.filter(h=>h.sender===current||h.receiver===current).slice().reverse();
+  if(filtered.length===0){panel.innerHTML+='<div>No transactions yet</div>';return;}
+  filtered.forEach(txn=>{
+    const div=document.createElement('div'); div.className='history-item';
+    div.innerHTML=`<div><strong>${txn.sender}</strong> → <strong>${txn.receiver}</strong></div><div>${formatRs(txn.amount)}</div><div style='opacity:0.7;font-size:12px'>${txn.time}</div>`;
+    panel.appendChild(div);
+  });
 }
 
 renderUsers();
