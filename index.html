@@ -41,7 +41,7 @@
         .login-card, .setup-card { background: var(--white); padding: 2.5rem; border-radius: 16px; box-shadow: var(--shadow); text-align: center; width: 90%; max-width: 400px; animation: slideUp 0.4s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .brand-logo { font-size: 2.5rem; color: var(--primary-color); font-weight: 800; }
-        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        .input-group { margin-bottom:1.5rem; text-align: left; }
         .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
         .input-field { width: 100%; padding: 12px 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; outline: none; }
         .btn-google { background: var(--white); color: var(--text-primary); border: 1px solid #dadce0; padding: 12px 24px; border-radius: 24px; cursor: pointer; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; margin-top: 10px; }
@@ -91,7 +91,7 @@
         .chat-menu-dropdown {
             position: absolute; top: 60px; right: 10px;
             background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            border-radius: 8px; width: 160px; display: none; flex-direction: column; z-index: 100;
+            border-radius: 8px; width: 180px; display: none; flex-direction: column; z-index: 100;
         }
         .chat-menu-dropdown button {
             background: none; border: none; width: 100%; text-align: left; padding: 10px 15px;
@@ -99,6 +99,7 @@
         }
         .chat-menu-dropdown button:hover { background: #f0f0f0; }
         .chat-menu-dropdown button.danger { color: var(--danger); }
+        .chat-menu-dropdown button.report { color: #ff9800; }
 
         /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
@@ -135,6 +136,13 @@
         .btn-acc { background: var(--primary-color); }
         .btn-rej { background: var(--danger); }
         .btn-danger { background: var(--danger); width: 100%; margin-top: 5px; }
+        
+        /* Admin Tabs */
+        .admin-tabs { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; overflow-x: auto; }
+        .admin-tab { background: none; border: none; padding: 5px 10px; cursor: pointer; white-space: nowrap; opacity: 0.6; }
+        .admin-tab.active { opacity: 1; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 600; }
+        .admin-section { display: none; max-height: 300px; overflow-y: auto; }
+        .admin-section.active { display: block; }
     </style>
 </head>
 <body>
@@ -143,7 +151,7 @@
     <div id="banned-overlay">
         <i class="fas fa-ban banned-icon"></i>
         <h2 style="color: var(--danger); margin-bottom: 10px;">Account Banned</h2>
-        <p style="color: #666; margin-bottom: 20px; max-width: 300px;">Your account has been banned by Zuber due to policy violation.</p>
+        <p style="color: #666; margin-bottom: 20px; max-width: 300px;">Your account has been banned by Zuber.</p>
         
         <div id="appeal-section">
             <textarea id="appeal-reason" class="input-field" rows="3" placeholder="Write your reason to unban..." style="margin-bottom: 10px;"></textarea>
@@ -230,6 +238,7 @@
                                 <button class="action-btn" id="chat-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
                                 <div id="chat-menu-dropdown" class="chat-menu-dropdown">
                                     <button id="clear-chat-btn"><i class="fas fa-eraser"></i> Clear Chat</button>
+                                    <button class="report" id="report-user-btn"><i class="fas fa-flag"></i> Report User</button>
                                     <button class="danger" id="block-user-btn"><i class="fas fa-ban"></i> Block User</button>
                                 </div>
                             </div>
@@ -279,31 +288,65 @@
         </div>
     </div>
 
+    <!-- Report Modal -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Report User</h3><button class="close-modal">&times;</button></div>
+            <textarea id="report-reason" class="input-field" rows="3" placeholder="Why are you reporting this user?" style="margin-bottom: 10px;"></textarea>
+            <button class="btn-primary" id="submit-report-btn" style="background: var(--danger);">Submit Report</button>
+        </div>
+    </div>
+
     <!-- Admin Panel -->
     <div id="admin-modal" class="modal">
-        <div class="modal-content" style="max-width:500px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width:550px;">
             <div class="modal-header"><h3>Admin Panel</h3><button class="close-modal">&times;</button></div>
             
-            <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
-                <h4>Manual Control</h4>
-                <input type="text" id="admin-username-input" class="input-field" placeholder="Enter username to control">
-                <div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap">
-                    <button class="btn-small btn-acc" id="admin-ban-btn">Ban User</button>
-                    <button class="btn-small btn-acc" id="admin-unban-btn">Unban</button>
-                    <button class="btn-small btn-acc" id="admin-verify-btn">Give Tick</button>
-                    <button class="btn-small btn-rej" id="admin-unverify-btn">Remove Tick</button>
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-tab="control">Control</button>
+                <button class="admin-tab" data-tab="appeals">Appeals</button>
+                <button class="admin-tab" data-tab="requests">Verify Req</button>
+                <button class="admin-tab" data-tab="reports">Reports</button>
+            </div>
+
+            <!-- Control -->
+            <div id="tab-control" class="admin-section active">
+                <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
+                    <h4>Manual Control</h4>
+                    <input type="text" id="admin-username-input" class="input-field" placeholder="Enter username to control">
+                    <div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap">
+                        <button class="btn-small btn-acc" id="admin-ban-btn">Ban User</button>
+                        <button class="btn-small btn-acc" id="admin-unban-btn">Unban</button>
+                        <button class="btn-small btn-acc" id="admin-verify-btn">Give Tick</button>
+                        <button class="btn-small btn-rej" id="admin-unverify-btn">Remove Tick</button>
+                    </div>
                 </div>
             </div>
 
-            <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
-                <h4>Ban Appeals</h4>
-                <div id="admin-appeals-list"></div>
+            <!-- Appeals -->
+            <div id="tab-appeals" class="admin-section">
+                <div style="max-height:300px; overflow-y:auto">
+                    <h4>Ban Appeals</h4>
+                    <div id="admin-appeals-list"></div>
+                </div>
             </div>
 
-            <div style="max-height:200px; overflow-y:auto">
-                <h4>Verification Requests</h4>
-                <div id="admin-requests-list"></div>
+            <!-- Requests -->
+            <div id="tab-requests" class="admin-section">
+                <div style="max-height:300px; overflow-y:auto">
+                    <h4>Verification Requests</h4>
+                    <div id="admin-requests-list"></div>
+                </div>
             </div>
+
+            <!-- Reports -->
+            <div id="tab-reports" class="admin-section">
+                <div style="max-height:300px; overflow-y:auto">
+                    <h4>User Reports</h4>
+                    <div id="admin-reports-list"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -344,6 +387,7 @@
         let selectedUser = null;
         let setupBase64 = "";
         let editBase64 = "";
+        let renderedMessages = new Set(); // To prevent double rendering
 
         const els = {
             screens: document.querySelectorAll('.screen'),
@@ -376,6 +420,7 @@
             chatMenuDropdown: document.getElementById('chat-menu-dropdown'),
             clearChatBtn: document.getElementById('clear-chat-btn'),
             blockUserBtn: document.getElementById('block-user-btn'),
+            reportUserBtn: document.getElementById('report-user-btn'),
             editProfileTrigger: document.getElementById('edit-profile-trigger'),
             editProfileModal: document.getElementById('edit-profile-modal'),
             editPreviewImg: document.getElementById('edit-preview-img'),
@@ -395,12 +440,16 @@
             adminUnverifyBtn: document.getElementById('admin-unverify-btn'),
             adminRequestsList: document.getElementById('admin-requests-list'),
             adminAppealsList: document.getElementById('admin-appeals-list'),
+            adminReportsList: document.getElementById('admin-reports-list'),
             emojiBtn: document.getElementById('emoji-btn'),
             emojiModal: document.getElementById('emoji-modal'),
             emojiGrid: document.getElementById('emoji-grid'),
             bannedOverlay: document.getElementById('banned-overlay'),
             submitAppealBtn: document.getElementById('submit-appeal-btn'),
-            appealReason: document.getElementById('appeal-reason')
+            appealReason: document.getElementById('appeal-reason'),
+            reportModal: document.getElementById('report-modal'),
+            reportReason: document.getElementById('report-reason'),
+            submitReportBtn: document.getElementById('submit-report-btn')
         };
 
         const showScreen = (id) => els.screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -411,13 +460,15 @@
             c.appendChild(x); setTimeout(()=>x.remove(), 3000);
         };
 
-        // --- LocalStorage Helpers ---
         const getLocalKey = (cid) => `zuber_chat_${cid}`;
         const saveMsgToLocal = (cid, msg) => {
             const key = getLocalKey(cid);
             let history = JSON.parse(localStorage.getItem(key)) || [];
-            history.push(msg);
-            localStorage.setItem(key, JSON.stringify(history));
+            // Avoid duplicates in local storage
+            if(!history.find(h => h.timestamp === msg.timestamp)) {
+                history.push(msg);
+                localStorage.setItem(key, JSON.stringify(history));
+            }
         };
         const loadMsgsFromLocal = (cid) => {
             const key = getLocalKey(cid);
@@ -447,15 +498,12 @@
                 const s = await get(ref(db, 'users/'+u.uid));
                 if(s.exists()) {
                     currentUserData = s.val();
-                    
-                    // Ban Check Logic
                     if(currentUserData.isBanned) {
-                        showScreen('main-screen'); // Show UI but blocked
+                        showScreen('main-screen');
                         els.bannedOverlay.classList.add('active');
                         checkAppealStatus();
                         return;
                     }
-
                     showScreen('main-screen');
                     initApp();
                     setupPresence();
@@ -469,7 +517,6 @@
             }
         });
 
-        // --- Ban Appeal Logic ---
         const checkAppealStatus = async () => {
             const snap = await get(ref(db, `banAppeals/${currentUser.uid}`));
             if(snap.exists() && snap.val().status === 'pending') {
@@ -482,11 +529,7 @@
         els.submitAppealBtn.onclick = async () => {
             const reason = els.appealReason.value;
             if(!reason) return showToast("Write reason", 'error');
-            await set(ref(db, `banAppeals/${currentUser.uid}`), {
-                reason: reason,
-                status: 'pending',
-                username: currentUserData.username
-            });
+            await set(ref(db, `banAppeals/${currentUser.uid}`), { reason, status: 'pending', username: currentUserData.username });
             checkAppealStatus();
         };
 
@@ -515,7 +558,6 @@
             showScreen('main-screen'); initApp(); setupPresence();
         };
 
-        // --- Presence ---
         function setupPresence() {
             const userStatusRef = ref(db, 'users/' + currentUser.uid + '/status');
             const lastOnlineRef = ref(db, 'users/' + currentUser.uid + '/lastOnline');
@@ -529,7 +571,6 @@
             });
         }
 
-        // --- Main App ---
         function initApp() {
             els.myAvatar.src = currentUserData.photoURL;
             els.myUsernameDisplay.innerText = currentUserData.username;
@@ -561,7 +602,6 @@
             });
         }
 
-        // --- Chat Logic ---
         async function openChat(user) {
             selectedUser = user;
             if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
@@ -572,16 +612,19 @@
             els.chatPlaceholder.style.display = 'none';
             els.activeChatInterface.style.display = 'flex';
             els.messagesContainer.innerHTML = '';
+            renderedMessages.clear(); // Reset tracking for new chat
 
             const cid = [currentUser.uid, user.uid].sort().join('_');
             selectedChatId = cid;
 
-            // Load from LocalStorage First
+            // Local Load
             const localMsgs = loadMsgsFromLocal(cid);
-            localMsgs.forEach(renderMsg);
+            localMsgs.forEach(m => {
+                renderMsg(m);
+                renderedMessages.add(m.timestamp); // Mark as rendered
+            });
             scrollToBottom();
 
-            // Block/Unblock Logic
             const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
             const isBlockedSnap = await get(blockedRef);
             const isBlocked = isBlockedSnap.exists();
@@ -614,10 +657,27 @@
                  els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
             }
 
-            // Online/Offline Listener
+            // Report Button Logic
+            els.reportUserBtn.onclick = () => { els.reportModal.classList.add('open'); };
+            els.submitReportBtn.onclick = async () => {
+                const reason = els.reportReason.value;
+                if(!reason) return showToast("Enter reason", 'error');
+                await push(ref(db, 'reports'), {
+                    reporter: currentUser.uid,
+                    reported: user.uid,
+                    username: user.username,
+                    reason: reason,
+                    status: 'pending',
+                    timestamp: Date.now()
+                });
+                showToast("Report Submitted", 'success');
+                els.reportModal.classList.remove('open');
+                els.reportReason.value = '';
+            };
+
+            // Online/Offline
             const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
             const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
-            
             onValue(partnerStatusRef, (snap) => {
                 const status = snap.val();
                 if(status === 'online') {
@@ -636,30 +696,18 @@
                 }
             });
 
-            // --- Realtime Listener (Auto-Delete Logic) ---
+            // Firebase Listener (Smart Logic to prevent doubles)
             if(!isBlocked && !theirBlockSnap.exists()) {
-                onValue(ref(db, 'chats/'+cid), snap => {
-                    if(snap.exists()) {
-                        const msgs = snap.val();
-                        // Find messages not in local storage (New messages)
-                        const localTimestamps = localMsgs.map(m => m.timestamp);
-                        
+                onValue(ref(db, 'chats/'+cid), s => {
+                    if(s.exists()) {
+                        const msgs = s.val();
                         Object.values(msgs).forEach(msg => {
-                            if(!localTimestamps.includes(msg.timestamp)) {
-                                // New Message Found
+                            // Only render if NOT in renderedMessages set
+                            if(!renderedMessages.has(msg.timestamp)) {
                                 saveMsgToLocal(cid, msg);
                                 renderMsg(msg);
+                                renderedMessages.add(msg.timestamp);
                                 scrollToBottom();
-                                
-                                // Delete from Firebase after 5 seconds (Safety margin for delivery)
-                                setTimeout(() => {
-                                    // Find key to delete
-                                    // Note: In prod, we'd have message IDs. Here we iterate or use push keys.
-                                    // For simplicity in this demo, we just trust push keys aren't reused instantly.
-                                    // Better approach: Delete specific key if we have it, or clear whole chat if desired.
-                                    // Here we will clear the whole Firebase chat path after delay to be sure DB is clean
-                                    remove(ref(db, 'chats/'+cid)); 
-                                }, 5000);
                             }
                         });
                     }
@@ -688,21 +736,28 @@
 
             const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
             
-            // Save Local Immediately
+            // 1. Save Local Immediately
             saveMsgToLocal(selectedChatId, msg);
+            renderedMessages.add(msg.timestamp);
+            
+            // 2. Render Immediately (Optimistic UI)
             renderMsg(msg);
             scrollToBottom();
             els.messageInput.value = '';
 
-            // Send to Firebase for Transport
+            // 3. Send to Firebase
             const msgRef = push(ref(db, 'chats/'+selectedChatId));
             await set(msgRef, msg);
+
+            // 4. Auto Delete THIS specific message after 5 seconds from Firebase only
+            setTimeout(() => {
+                remove(msgRef);
+            }, 5000);
         };
 
         els.messageInput.onkeypress = e => { if(e.key==='Enter') els.sendBtn.click(); };
         els.mobileBackBtn.onclick = () => { els.chatArea.classList.remove('active'); els.sidebar.classList.remove('hidden-mobile'); };
 
-        // --- Three Dots Menu ---
         els.chatMenuBtn.onclick = (e) => {
             e.stopPropagation();
             els.chatMenuDropdown.style.display = els.chatMenuDropdown.style.display === 'flex' ? 'none' : 'flex';
@@ -713,13 +768,22 @@
             if(confirm("Clear local chat history?")) {
                 localStorage.removeItem(getLocalKey(selectedChatId));
                 els.messagesContainer.innerHTML = '';
-                // Also clear Firebase if any remains
-                remove(ref(db, 'chats/'+selectedChatId));
+                renderedMessages.clear();
             }
         };
 
         // --- Admin Panel ---
         function loadAdminPanel() {
+            // Tab Logic
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                }
+            });
+
             // Verification Requests
             onValue(ref(db, 'verificationRequests'), s => {
                 els.adminRequestsList.innerHTML = '';
@@ -759,12 +823,33 @@
                                 item.className = 'req-item';
                                 item.style.borderColor = '#ef5350';
                                 item.innerHTML = `<b style="color:#ef5350">${u.username} (Banned)</b><br><small>${appeal.reason}</small><br>
-                                    <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban User</button>
+                                    <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
                                     <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
                                 `;
                                 els.adminAppealsList.appendChild(item);
                             }
                         });
+                    }
+                });
+            });
+
+            // User Reports
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        item.innerHTML = `<b style="color:#ff9800">${report.username}</b> reported<br>
+                            <small>${report.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban User</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}')">Reject Report</button>
+                        `;
+                        els.adminReportsList.appendChild(item);
                     }
                 });
             });
@@ -789,30 +874,36 @@
         };
 
         window.acceptAppeal = async (uid) => {
-            // Unban User
             await update(ref(db, 'users/'+uid), { isBanned: false });
-            // Remove Appeal
             await remove(ref(db, 'banAppeals/'+uid));
-            // Send Message
-            sendSystemMsg(uid, "Your ban appeal has been accepted by Zuber. You are unbanned.");
+            sendSystemMsg(uid, "Your ban appeal has been accepted. You are unbanned.");
             showToast("User Unbanned", 'success');
         };
-
         window.rejectAppeal = async (uid) => {
             await remove(ref(db, 'banAppeals/'+uid));
-            sendSystemMsg(uid, "Your ban appeal has been rejected by Zuber.");
+            sendSystemMsg(uid, "Your ban appeal has been rejected.");
             showToast("Appeal Rejected", 'info');
+        };
+
+        window.acceptReport = async (repKey, uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await update(ref(db, `reports/${repKey}`), { status: 'accepted' });
+            showToast("User Banned", 'success');
+            // Optionally notify reporter
+        };
+        window.rejectReport = async (repKey) => {
+            await remove(ref(db, `reports/${repKey}`));
+            showToast("Report Rejected", 'info');
         };
 
         const sendSystemMsg = async (uid, txt) => {
             await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
             const cid = [currentUser.uid, uid].sort().join('_');
             const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
-            // Save to local for admin history
-            saveMsgToLocal(cid, msg);
-            // Send to firebase
-            const refMsg = push(ref(db, 'chats/'+cid));
-            await set(refMsg, msg);
+            saveMsgToLocal(cid, msg); // Admin keeps local copy
+            // Don't auto delete admin system messages? Or let them delete? Let them delete to save space.
+            const msgRef = push(ref(db, 'chats/'+cid));
+            await set(msgRef, msg);
         };
 
         els.adminBanBtn.onclick = async () => {
@@ -892,10 +983,7 @@
             showToast("Sent", 'success'); els.verifyModal.classList.remove('open');
         };
 
-        // ADMIN BUTTON CLICK EVENT
-        els.adminPanelBtn.onclick = () => {
-            els.adminModal.classList.add('open');
-        }
+        els.adminPanelBtn.onclick = () => els.adminModal.classList.add('open');
 
         // Close Modals
         document.querySelectorAll('.modal, .close-modal').forEach(el => {
