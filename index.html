@@ -32,7 +32,6 @@
         #app-container { width: 100%; height: 100%; max-width: 1600px; background: var(--white); display: flex; position: relative; overflow: hidden; }
         @media (min-width: 900px) { #app-container { height: 95vh; width: 95vw; box-shadow: var(--shadow); } }
         
-        /* Background Pattern */
         .chat-area { background-color: #e3dacd; background-image: radial-gradient(#c5bfba 1.5px, transparent 1.5px); background-size: 20px 20px; }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; background: var(--light-gray); z-index: 20; }
@@ -74,7 +73,7 @@
         .chat-header { padding: 10px 16px; background: var(--light-gray); display: flex; justify-content: space-between; align-items: center; height: 70px; border-bottom: 1px solid #d1d7db; flex-shrink: 0; }
         .chat-header-info { display: flex; flex-direction: column; justify-content: center; }
         .chat-header-top { display: flex; align-items: center; gap: 12px; }
-        .status-text { font-size: 0.8rem; color: var(--text-secondary); margin-left: 52px; /* align with name */ }
+        .status-text { font-size: 0.8rem; color: var(--text-secondary); margin-left: 52px; }
         .status-text.online { color: var(--online-color); font-weight: 500; }
         
         .messages-container { flex: 1; padding: 20px 5%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
@@ -121,6 +120,15 @@
         .toast.success { background: #2e7d32; }
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
 
+        /* Ban Overlay */
+        #banned-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 5000; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 20px;
+        }
+        #banned-overlay.active { display: flex; }
+        .banned-icon { font-size: 4rem; color: var(--danger); margin-bottom: 20px; }
+
         /* Admin Panel specifics */
         .req-item { background: #f9f9f9; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
         .btn-small { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: white; margin-right: 5px; }
@@ -130,6 +138,21 @@
     </style>
 </head>
 <body>
+
+    <!-- Banned Overlay -->
+    <div id="banned-overlay">
+        <i class="fas fa-ban banned-icon"></i>
+        <h2 style="color: var(--danger); margin-bottom: 10px;">Account Banned</h2>
+        <p style="color: #666; margin-bottom: 20px; max-width: 300px;">Your account has been banned by Zuber due to policy violation.</p>
+        
+        <div id="appeal-section">
+            <textarea id="appeal-reason" class="input-field" rows="3" placeholder="Write your reason to unban..." style="margin-bottom: 10px;"></textarea>
+            <button class="btn-primary" id="submit-appeal-btn">Submit Appeal Request</button>
+        </div>
+        <div id="appeal-submitted-msg" style="display: none; color: var(--primary-color); font-weight: 600;">
+            Appeal Sent! Wait for Admin's response.
+        </div>
+    </div>
 
     <div id="app-container">
         <!-- Login Screen -->
@@ -205,7 +228,6 @@
                             </div>
                             <div style="position:relative">
                                 <button class="action-btn" id="chat-menu-btn"><i class="fas fa-ellipsis-v"></i></button>
-                                <!-- Dropdown Menu -->
                                 <div id="chat-menu-dropdown" class="chat-menu-dropdown">
                                     <button id="clear-chat-btn"><i class="fas fa-eraser"></i> Clear Chat</button>
                                     <button class="danger" id="block-user-btn"><i class="fas fa-ban"></i> Block User</button>
@@ -225,7 +247,7 @@
     </div>
 
     <!-- Modals -->
-    <!-- Edit Profile (Image Upload) -->
+    <!-- Edit Profile -->
     <div id="edit-profile-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Update Profile Picture</h3><button class="close-modal">&times;</button></div>
@@ -259,7 +281,7 @@
 
     <!-- Admin Panel -->
     <div id="admin-modal" class="modal">
-        <div class="modal-content" style="max-width:500px">
+        <div class="modal-content" style="max-width:500px; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header"><h3>Admin Panel</h3><button class="close-modal">&times;</button></div>
             
             <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
@@ -271,6 +293,11 @@
                     <button class="btn-small btn-acc" id="admin-verify-btn">Give Tick</button>
                     <button class="btn-small btn-rej" id="admin-unverify-btn">Remove Tick</button>
                 </div>
+            </div>
+
+            <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
+                <h4>Ban Appeals</h4>
+                <div id="admin-appeals-list"></div>
             </div>
 
             <div style="max-height:200px; overflow-y:auto">
@@ -315,13 +342,9 @@
         let currentUserData = null;
         let selectedChatId = null;
         let selectedUser = null;
-        
-        // Base64 for Profile Pics
-        let setupBase64 = currentUser ? currentUser.photoURL : "";
+        let setupBase64 = "";
         let editBase64 = "";
-        let isTypingTimer = null;
 
-        // DOM Elements
         const els = {
             screens: document.querySelectorAll('.screen'),
             googleBtn: document.getElementById('google-login-btn'),
@@ -349,24 +372,20 @@
             mobileBackBtn: document.getElementById('mobile-back-btn'),
             logoutBtn: document.getElementById('logout-btn'),
             sidebar: document.getElementById('sidebar'),
-            // Menu
             chatMenuBtn: document.getElementById('chat-menu-btn'),
             chatMenuDropdown: document.getElementById('chat-menu-dropdown'),
             clearChatBtn: document.getElementById('clear-chat-btn'),
             blockUserBtn: document.getElementById('block-user-btn'),
-            // Edit Profile
             editProfileTrigger: document.getElementById('edit-profile-trigger'),
             editProfileModal: document.getElementById('edit-profile-modal'),
             editPreviewImg: document.getElementById('edit-preview-img'),
             editPicUpload: document.getElementById('edit-pic-upload'),
             saveEditProfileBtn: document.getElementById('save-edit-profile-btn'),
-            // Verification
             verifyBtn: document.getElementById('verify-btn'),
             verifyModal: document.getElementById('verify-modal'),
             verifyProfession: document.getElementById('verify-profession'),
             verifyReason: document.getElementById('verify-reason'),
             submitVerifyBtn: document.getElementById('submit-verify-btn'),
-            // Admin
             adminPanelBtn: document.getElementById('admin-panel-btn'),
             adminModal: document.getElementById('admin-modal'),
             adminUsernameInput: document.getElementById('admin-username-input'),
@@ -375,13 +394,15 @@
             adminVerifyBtn: document.getElementById('admin-verify-btn'),
             adminUnverifyBtn: document.getElementById('admin-unverify-btn'),
             adminRequestsList: document.getElementById('admin-requests-list'),
-            // Emoji
+            adminAppealsList: document.getElementById('admin-appeals-list'),
             emojiBtn: document.getElementById('emoji-btn'),
             emojiModal: document.getElementById('emoji-modal'),
-            emojiGrid: document.getElementById('emoji-grid')
+            emojiGrid: document.getElementById('emoji-grid'),
+            bannedOverlay: document.getElementById('banned-overlay'),
+            submitAppealBtn: document.getElementById('submit-appeal-btn'),
+            appealReason: document.getElementById('appeal-reason')
         };
 
-        // Utils
         const showScreen = (id) => els.screens.forEach(s => s.classList.toggle('active', s.id === id));
         const showToast = (msg, t='info') => {
             const c = document.getElementById('toast-container');
@@ -390,7 +411,19 @@
             c.appendChild(x); setTimeout(()=>x.remove(), 3000);
         };
 
-        // File to Base64
+        // --- LocalStorage Helpers ---
+        const getLocalKey = (cid) => `zuber_chat_${cid}`;
+        const saveMsgToLocal = (cid, msg) => {
+            const key = getLocalKey(cid);
+            let history = JSON.parse(localStorage.getItem(key)) || [];
+            history.push(msg);
+            localStorage.setItem(key, JSON.stringify(history));
+        };
+        const loadMsgsFromLocal = (cid) => {
+            const key = getLocalKey(cid);
+            return JSON.parse(localStorage.getItem(key)) || [];
+        };
+
         const fileToBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -401,7 +434,6 @@
         // --- Auth ---
         els.googleBtn.onclick = () => signInWithPopup(auth, provider).catch(e => showToast(e.message, 'error'));
         els.logoutBtn.onclick = () => {
-            // Go offline explicitly on logout
             if(currentUser) {
                 set(ref(db, 'users/'+currentUser.uid+'/status'), 'offline');
                 set(ref(db, 'users/'+currentUser.uid+'/lastOnline'), Date.now());
@@ -415,11 +447,15 @@
                 const s = await get(ref(db, 'users/'+u.uid));
                 if(s.exists()) {
                     currentUserData = s.val();
+                    
+                    // Ban Check Logic
                     if(currentUserData.isBanned) {
-                        alert("You have been banned by Admin.");
-                        signOut(auth);
+                        showScreen('main-screen'); // Show UI but blocked
+                        els.bannedOverlay.classList.add('active');
+                        checkAppealStatus();
                         return;
                     }
+
                     showScreen('main-screen');
                     initApp();
                     setupPresence();
@@ -433,7 +469,27 @@
             }
         });
 
-        // Setup Screen Image Upload
+        // --- Ban Appeal Logic ---
+        const checkAppealStatus = async () => {
+            const snap = await get(ref(db, `banAppeals/${currentUser.uid}`));
+            if(snap.exists() && snap.val().status === 'pending') {
+                els.appealReason.style.display = 'none';
+                els.submitAppealBtn.style.display = 'none';
+                document.getElementById('appeal-submitted-msg').style.display = 'block';
+            }
+        };
+
+        els.submitAppealBtn.onclick = async () => {
+            const reason = els.appealReason.value;
+            if(!reason) return showToast("Write reason", 'error');
+            await set(ref(db, `banAppeals/${currentUser.uid}`), {
+                reason: reason,
+                status: 'pending',
+                username: currentUserData.username
+            });
+            checkAppealStatus();
+        };
+
         els.setupPicUpload.onchange = async (e) => {
             const file = e.target.files[0];
             if(file) {
@@ -459,11 +515,10 @@
             showScreen('main-screen'); initApp(); setupPresence();
         };
 
-        // --- Online/Offline Presence System ---
+        // --- Presence ---
         function setupPresence() {
             const userStatusRef = ref(db, 'users/' + currentUser.uid + '/status');
             const lastOnlineRef = ref(db, 'users/' + currentUser.uid + '/lastOnline');
-
             const connectedRef = ref(db, '.info/connected');
             onValue(connectedRef, (snap) => {
                 if (snap.val() === true) {
@@ -521,7 +576,12 @@
             const cid = [currentUser.uid, user.uid].sort().join('_');
             selectedChatId = cid;
 
-            // Block/Unblock Logic UI
+            // Load from LocalStorage First
+            const localMsgs = loadMsgsFromLocal(cid);
+            localMsgs.forEach(renderMsg);
+            scrollToBottom();
+
+            // Block/Unblock Logic
             const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
             const isBlockedSnap = await get(blockedRef);
             const isBlocked = isBlockedSnap.exists();
@@ -554,11 +614,10 @@
                  els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
             }
 
-            // --- ONLINE STATUS LISTENER ---
+            // Online/Offline Listener
             const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
             const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
             
-            // Listen to Status
             onValue(partnerStatusRef, (snap) => {
                 const status = snap.val();
                 if(status === 'online') {
@@ -566,7 +625,6 @@
                     els.currentChatStatus.classList.add('online');
                 } else {
                     els.currentChatStatus.classList.remove('online');
-                    // Fetch last seen if offline
                     get(partnerLastSeenRef).then(tsSnap => {
                         if(tsSnap.exists()) {
                             const time = new Date(tsSnap.val());
@@ -578,12 +636,32 @@
                 }
             });
 
+            // --- Realtime Listener (Auto-Delete Logic) ---
             if(!isBlocked && !theirBlockSnap.exists()) {
-                onValue(ref(db, 'chats/'+cid), s => {
-                    els.messagesContainer.innerHTML = '';
-                    if(s.exists()) {
-                        Object.values(s.val()).forEach(renderMsg);
-                        els.messagesContainer.scrollTop = els.messagesContainer.scrollHeight;
+                onValue(ref(db, 'chats/'+cid), snap => {
+                    if(snap.exists()) {
+                        const msgs = snap.val();
+                        // Find messages not in local storage (New messages)
+                        const localTimestamps = localMsgs.map(m => m.timestamp);
+                        
+                        Object.values(msgs).forEach(msg => {
+                            if(!localTimestamps.includes(msg.timestamp)) {
+                                // New Message Found
+                                saveMsgToLocal(cid, msg);
+                                renderMsg(msg);
+                                scrollToBottom();
+                                
+                                // Delete from Firebase after 5 seconds (Safety margin for delivery)
+                                setTimeout(() => {
+                                    // Find key to delete
+                                    // Note: In prod, we'd have message IDs. Here we iterate or use push keys.
+                                    // For simplicity in this demo, we just trust push keys aren't reused instantly.
+                                    // Better approach: Delete specific key if we have it, or clear whole chat if desired.
+                                    // Here we will clear the whole Firebase chat path after delay to be sure DB is clean
+                                    remove(ref(db, 'chats/'+cid)); 
+                                }, 5000);
+                            }
+                        });
                     }
                 });
             }
@@ -597,31 +675,28 @@
             els.messagesContainer.appendChild(d);
         };
 
+        const scrollToBottom = () => els.messagesContainer.scrollTop = els.messagesContainer.scrollHeight;
+
         els.sendBtn.onclick = async () => {
             const txt = els.messageInput.value.trim();
             if(!txt || !selectedChatId) return;
 
             const theirBlockSnap = await get(ref(db, `users/${selectedUser.uid}/blocked/${currentUser.uid}`));
-            if(theirBlockSnap.exists()) {
-                return showToast("You are blocked by this user", 'error');
-            }
+            if(theirBlockSnap.exists()) return showToast("You are blocked by this user", 'error');
 
             await set(ref(db, `users/${selectedUser.uid}/contacts/${currentUser.uid}`), true);
 
-            // --- AUTO DELETE LOGIC (5 Seconds) ---
-            const msgRef = push(ref(db, 'chats/'+selectedChatId));
-            await set(msgRef, {
-                text: txt, 
-                sender: currentUser.uid, 
-                timestamp: Date.now()
-            });
-
-            // Delete message after 5 seconds from Firebase
-            setTimeout(() => {
-                remove(msgRef);
-            }, 5000);
-
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            
+            // Save Local Immediately
+            saveMsgToLocal(selectedChatId, msg);
+            renderMsg(msg);
+            scrollToBottom();
             els.messageInput.value = '';
+
+            // Send to Firebase for Transport
+            const msgRef = push(ref(db, 'chats/'+selectedChatId));
+            await set(msgRef, msg);
         };
 
         els.messageInput.onkeypress = e => { if(e.key==='Enter') els.sendBtn.click(); };
@@ -634,15 +709,18 @@
         };
         document.onclick = () => els.chatMenuDropdown.style.display = 'none';
 
-        els.clearChatBtn.onclick = async () => {
-            if(confirm("Clear all messages?")) {
-                await remove(ref(db, 'chats/'+selectedChatId));
+        els.clearChatBtn.onclick = () => {
+            if(confirm("Clear local chat history?")) {
+                localStorage.removeItem(getLocalKey(selectedChatId));
                 els.messagesContainer.innerHTML = '';
+                // Also clear Firebase if any remains
+                remove(ref(db, 'chats/'+selectedChatId));
             }
         };
 
         // --- Admin Panel ---
         function loadAdminPanel() {
+            // Verification Requests
             onValue(ref(db, 'verificationRequests'), s => {
                 els.adminRequestsList.innerHTML = '';
                 if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
@@ -660,6 +738,31 @@
                                     <button class="btn-small btn-rej" onclick="window.rejectAdmin('${uid}')">Rej</button>
                                 `;
                                 els.adminRequestsList.appendChild(item);
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Ban Appeals
+            onValue(ref(db, 'banAppeals'), s => {
+                els.adminAppealsList.innerHTML = '';
+                if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
+                s.forEach(c => {
+                    const appeal = c.val();
+                    if(appeal.status === 'pending') {
+                        const uid = c.key;
+                        get(ref(db, 'users/'+uid)).then(uSnap => {
+                            if(uSnap.exists()) {
+                                const u = uSnap.val();
+                                const item = document.createElement('div');
+                                item.className = 'req-item';
+                                item.style.borderColor = '#ef5350';
+                                item.innerHTML = `<b style="color:#ef5350">${u.username} (Banned)</b><br><small>${appeal.reason}</small><br>
+                                    <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban User</button>
+                                    <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
+                                `;
+                                els.adminAppealsList.appendChild(item);
                             }
                         });
                     }
@@ -685,10 +788,31 @@
             showToast("Rejected", 'info');
         };
 
+        window.acceptAppeal = async (uid) => {
+            // Unban User
+            await update(ref(db, 'users/'+uid), { isBanned: false });
+            // Remove Appeal
+            await remove(ref(db, 'banAppeals/'+uid));
+            // Send Message
+            sendSystemMsg(uid, "Your ban appeal has been accepted by Zuber. You are unbanned.");
+            showToast("User Unbanned", 'success');
+        };
+
+        window.rejectAppeal = async (uid) => {
+            await remove(ref(db, 'banAppeals/'+uid));
+            sendSystemMsg(uid, "Your ban appeal has been rejected by Zuber.");
+            showToast("Appeal Rejected", 'info');
+        };
+
         const sendSystemMsg = async (uid, txt) => {
             await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
             const cid = [currentUser.uid, uid].sort().join('_');
-            push(ref(db, 'chats/'+cid), { text: txt, sender: currentUser.uid, timestamp: Date.now() });
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            // Save to local for admin history
+            saveMsgToLocal(cid, msg);
+            // Send to firebase
+            const refMsg = push(ref(db, 'chats/'+cid));
+            await set(refMsg, msg);
         };
 
         els.adminBanBtn.onclick = async () => {
@@ -770,7 +894,6 @@
 
         // ADMIN BUTTON CLICK EVENT
         els.adminPanelBtn.onclick = () => {
-            console.log("Admin button clicked");
             els.adminModal.classList.add('open');
         }
 
