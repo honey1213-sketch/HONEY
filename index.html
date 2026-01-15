@@ -59,7 +59,7 @@
         .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
         .my-username { font-weight: 600; display: flex; align-items: center; gap: 5px; }
         .blue-tick { color: var(--blue-tick); font-size: 0.8rem; }
-        .action-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem; padding: 8px; border-radius: 50%; }
+        .action-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem; padding: 8px; border-radius: 50%; position: relative; z-index: 10; }
         .action-btn:hover { background: rgba(0,0,0,0.05); }
         .contacts-list { flex: 1; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f5f5f5; }
@@ -95,7 +95,7 @@
         .chat-menu-dropdown button.danger { color: var(--danger); }
 
         /* Modals */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
         .modal.open { display: flex; }
         .modal-content { background: var(--white); padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; animation: popIn 0.3s; }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -108,7 +108,7 @@
         .emoji-item:hover { background: #eee; }
 
         /* Call Overlay */
-        #call-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #075e54; z-index: 200; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        #call-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #075e54; z-index: 2000; flex-direction: column; justify-content: center; align-items: center; color: white; }
         #call-overlay.active { display: flex; }
         .caller-info { text-align: center; margin-bottom: 30px; }
         .call-actions { display: flex; gap: 30px; }
@@ -116,7 +116,7 @@
         .accept-btn { background: #4caf50; width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
 
         /* Toast */
-        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 10px; }
+        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
         .toast { background: #323232; color: white; padding: 12px 24px; border-radius: 4px; font-size: 0.9rem; animation: fadeInOut 3s forwards; display: flex; align-items: center; gap: 10px; }
         .toast.error { background: #d32f2f; }
         .toast.success { background: #2e7d32; }
@@ -170,7 +170,7 @@
                                 <i class="fas fa-check-circle blue-tick" id="my-blue-tick" style="display:none"></i>
                             </div>
                         </div>
-                        <div style="display:flex; gap:5px">
+                        <div style="display:flex; gap:5px; z-index: 15;">
                             <!-- Admin Button -->
                             <button class="action-btn" id="admin-panel-btn" style="display:none"><i class="fas fa-user-shield"></i></button>
                             <button class="action-btn" id="verify-btn"><i class="fas fa-certificate"></i></button>
@@ -204,6 +204,7 @@
                                 <!-- Dropdown Menu -->
                                 <div id="chat-menu-dropdown" class="chat-menu-dropdown">
                                     <button id="clear-chat-btn"><i class="fas fa-eraser"></i> Clear Chat</button>
+                                    <!-- Block Button: Will toggle text via JS -->
                                     <button class="danger" id="block-user-btn"><i class="fas fa-ban"></i> Block User</button>
                                 </div>
                             </div>
@@ -309,7 +310,7 @@
             authDomain: "krp-bank.firebaseapp.com",
             databaseURL: "https://krp-bank-default-rtdb.firebaseio.com",
             projectId: "krp-bank",
-            storageBucket: "krp-bank.firebasystorage.app",
+            storageBucket: "krp-bank.firebasestorage.app",
             messagingSenderId: "911407082396",
             appId: "1:911407082396:web:c5af104a844e2697797659",
             measurementId: "G-R0J2TLLC3T"
@@ -356,7 +357,7 @@
             chatMenuBtn: document.getElementById('chat-menu-btn'),
             chatMenuDropdown: document.getElementById('chat-menu-dropdown'),
             clearChatBtn: document.getElementById('clear-chat-btn'),
-            blockUserBtn: document.getElementById('block-user-btn'),
+            blockUserBtn: document.getElementById('block-user-btn'), // Dynamic Button
             // Edit Profile
             editProfileTrigger: document.getElementById('edit-profile-trigger'),
             editProfileModal: document.getElementById('edit-profile-modal'),
@@ -495,26 +496,53 @@
             const cid = [currentUser.uid, user.uid].sort().join('_');
             selectedChatId = cid;
 
-            // Check Blocked Status
-            const myBlockSnap = await get(ref(db, `users/${currentUser.uid}/blocked/${user.uid}`));
-            if(myBlockSnap.exists()) {
+            // Block/Unblock Logic UI
+            const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
+            const isBlockedSnap = await get(blockedRef);
+            const isBlocked = isBlockedSnap.exists();
+
+            if(isBlocked) {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-user-check"></i> Unblock User';
+                els.blockUserBtn.classList.remove('danger');
+                els.blockUserBtn.style.color = 'var(--primary-color)';
+                
+                // Set Unblock Action
+                els.blockUserBtn.onclick = async () => {
+                    await remove(blockedRef);
+                    showToast("User Unblocked", 'success');
+                    openChat(user); // Refresh UI
+                };
+
                 els.messagesContainer.innerHTML = '<div style="text-align:center;color:#888;margin-top:20px">You blocked this user. Unblock to chat.</div>';
-                return; 
+            } else {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                
+                // Set Block Action
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${user.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
+                        openChat(user); // Refresh UI
+                    }
+                };
             }
 
             // Check if they blocked me
             const theirBlockSnap = await get(ref(db, `users/${user.uid}/blocked/${currentUser.uid}`));
-            if(theirBlockSnap.exists()) {
-                els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
+            if(theirBlockSnap.exists() && !isBlocked) {
+                 els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
             }
 
-            onValue(ref(db, 'chats/'+cid), s => {
-                els.messagesContainer.innerHTML = '';
-                if(s.exists()) {
-                    Object.values(s.val()).forEach(renderMsg);
-                    els.messagesContainer.scrollTop = els.messagesContainer.scrollHeight;
-                }
-            });
+            if(!isBlocked && !theirBlockSnap.exists()) {
+                onValue(ref(db, 'chats/'+cid), s => {
+                    els.messagesContainer.innerHTML = '';
+                    if(s.exists()) {
+                        Object.values(s.val()).forEach(renderMsg);
+                        els.messagesContainer.scrollTop = els.messagesContainer.scrollHeight;
+                    }
+                });
+            }
         }
 
         const renderMsg = (m) => {
@@ -558,14 +586,6 @@
             if(confirm("Clear all messages?")) {
                 await remove(ref(db, 'chats/'+selectedChatId));
                 els.messagesContainer.innerHTML = '';
-            }
-        };
-
-        els.blockUserBtn.onclick = async () => {
-            if(confirm(`Block ${selectedUser.username}?`)) {
-                await set(ref(db, `users/${currentUser.uid}/blocked/${selectedUser.uid}`), true);
-                showToast("User blocked", 'success');
-                openChat(selectedUser); // Reload view
             }
         };
 
@@ -678,7 +698,6 @@
                     if(call.receiver === currentUser.uid && call.status === 'ringing') {
                         activeCallId = c.key;
                         showCallUI(call.callerName, call.callerPhoto, 'Incoming Call...', true);
-                        // Play sound (optional)
                     }
                     // If call status is connected/ended
                     if(activeCallId === c.key && call.status === 'connected') {
@@ -764,8 +783,9 @@
             showToast("Sent", 'success'); els.verifyModal.classList.remove('open');
         };
 
-        // ADMIN BUTTON CLICK EVENT (THE FIX)
+        // ADMIN BUTTON CLICK EVENT (FIXED)
         els.adminPanelBtn.onclick = () => {
+            console.log("Admin button clicked");
             els.adminModal.classList.add('open');
         }
 
