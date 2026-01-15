@@ -3,866 +3,516 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zuber - Social App</title>
+    <title>Zuber - Chat App</title>
     <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
     <style>
+        /* --- CSS Reset & WhatsApp Theme --- */
         :root {
-            --bg-color: #fafafa;
-            --white: #ffffff;
-            --border: #dbdbdb;
-            --text-main: #262626;
-            --text-light: #8e8e8e;
-            --primary: #0095f6;
-            --story-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            --app-bg: #d1d7db;
+            --sidebar-bg: #ffffff;
+            --chat-bg: #efeae2;
+            --primary-green: #00a884;
+            --outgoing-bubble: #d9fdd3;
+            --incoming-bubble: #ffffff;
+            --text-primary: #111b21;
+            --text-secondary: #667781;
+            --border-color: #e9edef;
+            --header-bg: #f0f2f5;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         
-        body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; overflow-x: hidden; }
+        body { background-color: var(--app-bg); height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
 
-        /* --- Screens Logic --- */
+        .app-container {
+            width: 100%; height: 100%; max-width: 1600px; background: #fff; display: flex;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative;
+        }
+
+        /* --- Screens --- */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; }
         .screen.active { display: flex; }
 
-        /* --- Auth & Setup Screen --- */
-        .auth-container {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            padding: 20px;
-            background: var(--white);
+        /* --- Auth Screen --- */
+        .auth-wrapper {
+            flex: 1; display: flex; justify-content: center; align-items: center; background: #fff;
         }
-
-        .login-box {
-            border: 1px solid var(--border);
-            padding: 40px;
-            text-align: center;
-            width: 100%;
-            max-width: 350px;
-            margin-bottom: 10px;
+        .auth-box {
+            width: 350px; text-align: center; border: 1px solid #ddd; padding: 30px; border-radius: 10px;
         }
-
-        .app-logo { font-family: 'Billabong', cursive; font-size: 3rem; margin-bottom: 20px; display: block; }
-        .app-logo span { background: linear-gradient(45deg, #f09433, #bc1888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        input[type="text"], input[type="file"] {
-            width: 100%;
-            padding: 9px 8px;
-            border: 1px solid var(--border);
-            border-radius: 3px;
-            margin-bottom: 10px;
-            background: #fafafa;
-            outline: none;
+        .auth-box h2 { color: var(--primary-green); margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: #666; }
+        .input-group input {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none;
         }
-
-        .btn-google {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 7px 16px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+        .btn-auth {
+            width: 100%; padding: 10px; background: var(--primary-green); color: white; border: none;
+            border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
+        .toggle-link { margin-top: 15px; font-size: 0.9rem; cursor: pointer; color: var(--primary-green); }
 
-        /* --- Main App Layout --- */
-        nav {
-            background: var(--white);
-            border-bottom: 1px solid var(--border);
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+        /* --- Main App (Sidebar + Chat) --- */
+        .sidebar {
+            width: 30%; min-width: 300px; max-width: 450px; border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; background: var(--sidebar-bg);
         }
         
-        .nav-content {
-            width: 100%;
-            max-width: 935px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
+        /* Sidebar Header */
+        .header {
+            height: 60px; background-color: var(--header-bg); padding: 10px 16px; display: flex;
+            align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color);
+        }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer; }
+        .header-icons { display: flex; gap: 20px; color: #54656f; }
+        .icon-btn { cursor: pointer; font-size: 1.2rem; color: inherit; background: none; border: none; }
+
+        /* Add Contact Form */
+        .add-contact-form {
+            padding: 10px 15px; background: #fff; border-bottom: 1px solid #e9edef; display: none; /* Hidden by default */
+        }
+        .add-contact-form.active { display: block; }
+        .add-contact-form input {
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; outline: none;
         }
 
-        .nav-icons i { font-size: 1.5rem; margin-left: 20px; cursor: pointer; transition: transform 0.1s;}
-        .nav-icons i:active { transform: scale(0.9); }
-
-        /* --- Feed Screen --- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            padding-top: 30px;
-            overflow-y: auto;
+        /* Chat List */
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item {
+            display: flex; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f0f2f5;
         }
+        .chat-item:hover { background-color: #f5f6f6; }
+        .chat-item.active { background-color: #f0f2f5; }
+        .chat-item img { width: 49px; height: 49px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .chat-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .chat-name { font-size: 1.05rem; color: var(--text-primary); }
+        .chat-preview { font-size: 0.85rem; color: var(--text-secondary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .feed-container {
-            width: 100%;
-            max-width: 470px;
-            padding-bottom: 60px;
-        }
-
-        /* Stories */
-        .stories-wrapper {
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px 0;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            display: flex;
-            gap: 15px;
-            padding-left: 15px;
-            scrollbar-width: none;
-        }
-        .stories-wrapper::-webkit-scrollbar { display: none; }
-
-        .story {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            min-width: 66px;
-        }
-        
-        .story-ring {
-            width: 66px;
-            height: 66px;
-            border-radius: 50%;
-            padding: 2px;
-            background: var(--story-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .story-ring img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid var(--white);
-            object-fit: cover;
-        }
-
-        .story-username { font-size: 0.75rem; margin-top: 5px; color: var(--text-main); }
-
-        /* Post Card */
-        .post-card {
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .post-header {
-            padding: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .post-user { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
-        .post-user img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-
-        .post-image { width: 100%; display: block; min-height: 300px; background: #efefef; object-fit: cover; }
-
-        .post-actions { padding: 10px 14px; font-size: 1.5rem; display: flex; gap: 15px; }
-        .post-actions i { cursor: pointer; transition: transform 0.1s; }
-        .post-actions i:active { transform: scale(0.9); }
-        .post-actions i.liked { color: #ed4956; }
-
-        .post-likes { padding: 0 14px; font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
-        .post-caption { padding: 0 14px 14px 14px; font-size: 0.9rem; }
-        .post-caption span { font-weight: 600; margin-right: 5px; }
-
-        /* --- Profile Screen --- */
-        .profile-container {
-            max-width: 935px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 30px 20px;
-            background: var(--white);
-            border-top: 1px solid var(--border); /* Only needed on desktop view usually */
-        }
-
-        .profile-header {
-            display: flex;
-            margin-bottom: 44px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 40px;
-        }
-
-        .profile-img-container {
-            margin-right: 30px;
-            flex-shrink: 0;
-            margin-left: 20px;
-        }
-
-        .profile-pic-lg {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            cursor: pointer;
-            border: 1px solid var(--border);
-        }
-
-        .profile-info {
-            flex: 1;
-        }
-
-        .profile-top-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .username-lg { font-size: 1.5rem; font-weight: 300; margin-right: 20px; }
-
-        .btn-edit-profile {
-            background-color: var(--bg-color);
-            border: 1px solid var(--border);
-            padding: 5px 9px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        
-        .btn-settings {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .stats-row {
-            display: flex;
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-        }
-        .stats-row span { margin-right: 40px; }
-        .stats-row strong { font-weight: 600; }
-
-        .bio-name { font-weight: 600; }
-        .bio-text { font-size: 1.1rem; white-space: pre-wrap; }
-
-        /* Profile Grid */
-        .profile-tabs {
-            display: flex;
-            justify-content: center;
-            border-top: 1px solid var(--border);
-            margin-top: 20px;
-        }
-        .tab {
-            padding: 15px 0;
-            margin-right: 60px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--text-light);
-            cursor: pointer;
-            border-top: 1px solid transparent;
-            margin-top: -1px;
-        }
-        .tab.active {
-            color: var(--text-main);
-            border-top: 1px solid var(--text-main);
-        }
-
-        .profile-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 28px;
-            padding: 20px 0;
-        }
-
-        .grid-item {
-            position: relative;
-            padding-bottom: 100%; /* Square aspect ratio */
-            background-color: #efefef;
-            cursor: pointer;
-        }
-        .grid-item img {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-        }
-        .grid-overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .grid-item:hover .grid-overlay { opacity: 1; }
-
-        /* --- Modals --- */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.65);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal.active { display: flex; }
-
-        .modal-content {
-            background: var(--white);
-            width: 90%;
-            max-width: 400px;
-            border-radius: 12px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            text-align: center;
-            font-weight: 600;
+        /* --- Chat Area --- */
+        .chat-area {
+            flex: 1; display: flex; flex-direction: column;
+            background-color: var(--chat-bg);
+            background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
             position: relative;
         }
 
-        .close-modal { position: absolute; right: 15px; top: 12px; cursor: pointer; color: var(--primary); font-weight: bold; }
+        /* Chat Header */
+        .chat-area-header {
+            height: 60px; background: var(--header-bg); padding: 10px 16px; display: flex;
+            align-items: center; border-bottom: 1px solid var(--border-color); z-index: 10;
+        }
+        .back-btn { display: none; margin-right: 10px; font-size: 1.5rem; cursor: pointer; }
+        .contact-name { font-weight: bold; font-size: 1rem; }
 
-        .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        
-        .preview-img { width: 100%; height: 200px; object-fit: contain; background: #fafafa; border: 1px solid var(--border); display: none; }
+        /* Messages */
+        .messages-container { flex: 1; padding: 20px 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 65%; padding: 6px 7px 8px 9px; border-radius: 7.5px; font-size: 0.9rem; position: relative; box-shadow: 0 1px 0.5px rgba(11,20,26,0.13); word-wrap: break-word; }
+        .message.incoming { align-self: flex-start; background: var(--incoming-bubble); border-top-left-radius: 0; }
+        .message.outgoing { align-self: flex-end; background: var(--outgoing-bubble); border-top-right-radius: 0; }
+        .msg-meta { display: flex; justify-content: flex-end; align-items: center; margin-top: 2px; margin-left: 10px; float: right; gap: 4px; font-size: 0.65rem; color: #8696a0; }
 
-        .upload-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
+        /* Input Footer */
+        .chat-footer {
+            min-height: 62px; background: var(--header-bg); padding: 5px 16px; display: flex;
+            align-items: center; gap: 15px; z-index: 10;
+        }
+        .input-box { flex: 1; background: #fff; border-radius: 8px; padding: 9px 12px; border: 1px solid #fff; }
+        .input-box input { width: 100%; border: none; outline: none; }
+        .send-icon { color: #54656f; font-size: 1.5rem; cursor: pointer; opacity: 0.5; }
+        .send-icon.active { color: var(--primary-green); opacity: 1; cursor: pointer; }
+
+        /* Empty State */
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: #f0f2f5; border-bottom: 6px solid #25d366; text-align: center;
         }
 
         /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .nav-content { padding: 0 10px; }
-            .app-logo { font-size: 2rem; display: none; } /* Hide logo on mobile to fit icons */
-            .feed-container { max-width: 100%; padding: 0; border: none; margin-top: 0; }
-            .post-card { border-radius: 0; border-left: none; border-right: none; }
-            .stories-wrapper { border: none; border-radius: 0; margin-bottom: 10px; background: transparent; }
-            
-            /* Mobile Profile Styling */
-            .profile-header { flex-direction: column; padding: 20px; }
-            .profile-img-container { margin-right: 0; margin-bottom: 20px; margin-left: 0; display: flex; justify-content: center; }
-            .profile-pic-lg { width: 80px; height: 80px; }
-            .profile-info { text-align: center; }
-            .profile-top-row { justify-content: center; margin-bottom: 10px; }
-            .stats-row { justify-content: center; margin-bottom: 15px; }
-            .stats-row span { margin-right: 20px; font-size: 1rem; }
-            
-            .profile-grid { gap: 3px; }
-            
-            /* Mobile Bottom Nav logic (simulated via top nav for simplicity in this file, but responsive) */
-            nav { position: fixed; top: 0; width: 100%; }
-            .main-content, .profile-container { margin-top: 60px; height: calc(100vh - 60px); }
-            .profile-container { background: var(--white); height: auto; min-height: 100%; }
+        @media (max-width: 900px) {
+            .app-container { height: 100vh; width: 100vw; margin-top: 0; }
+            .sidebar { width: 100%; max-width: none; }
+            .chat-area { display: none; width: 100%; position: absolute; top: 0; left: 0; height: 100%; z-index: 20; }
+            .app-container.chat-active .sidebar { display: none; }
+            .app-container.chat-active .chat-area { display: flex; }
+            .back-btn { display: block; }
+            .messages-container { padding: 10px 15px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. Login Screen -->
+<div class="app-container">
+
+    <!-- 1. Auth Screen -->
     <div id="authScreen" class="screen active">
-        <div class="auth-container">
-            <div class="login-box">
-                <h1 class="app-logo"><span>Zuber</span></h1>
-                <p style="color:var(--text-light); margin-bottom:20px;">Sign in to see photos and videos from your friends.</p>
-                <button class="btn-google" id="googleLoginBtn">
-                    <i class="ri-google-fill"></i> Log in with Google
-                </button>
+        <div class="auth-wrapper">
+            <div class="auth-box" id="loginBox">
+                <h2>Zuber Login</h2>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="Enter email">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPass" placeholder="Enter password">
+                </div>
+                <button class="btn-auth" id="loginBtn">Log In</button>
+                <div class="toggle-link" id="goToSignup">Create new account</div>
+            </div>
+
+            <div class="auth-box" id="signupBox" style="display:none;">
+                <h2>Zuber Signup</h2>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" placeholder="Enter email">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="signupPass" placeholder="Create password">
+                </div>
+                <button class="btn-auth" id="signupBtn">Sign Up</button>
+                <div class="toggle-link" id="goToLogin">Already have an account?</div>
             </div>
         </div>
     </div>
 
     <!-- 2. Username Setup Screen -->
     <div id="setupScreen" class="screen">
-        <div class="auth-container">
-            <div class="login-box">
-                <img id="setupProfilePic" src="" style="width:80px; height:80px; border-radius:50%; margin-bottom:10px;">
-                <h2>Welcome to Zuber</h2>
-                <p style="margin-bottom:20px;">Please choose a username to continue.</p>
-                <input type="text" id="usernameInput" placeholder="Create a username">
-                <button class="btn-google" id="saveUsernameBtn" style="margin-top:10px;">Continue</button>
+        <div class="auth-wrapper">
+            <div class="auth-box">
+                <h2>Welcome</h2>
+                <p style="margin-bottom: 20px; color: #666;">Choose a unique username to start chatting.</p>
+                <input type="text" id="usernameInput" placeholder="Enter username (e.g. rahul)" style="width:100%; padding:10px; margin-bottom:10px;">
+                <button class="btn-auth" id="saveUsernameBtn">Start Chatting</button>
             </div>
         </div>
     </div>
 
-    <!-- 3. Main App Screen -->
+    <!-- 3. Main Chat App -->
     <div id="appScreen" class="screen">
-        <nav>
-            <div class="nav-content">
-                <h1 class="app-logo" style="margin:0; font-size: 1.8rem;"><span>Zuber</span></h1>
-                <div class="nav-icons">
-                    <i class="ri-home-5-fill" id="navHomeBtn" onclick="switchTab('home')"></i>
-                    <i class="ri-messenger-line"></i>
-                    <i class="ri-add-circle-line" id="openCreatePostBtn"></i>
-                    <i class="ri-compass-3-line"></i>
-                    <img id="navProfilePic" src="" style="width:24px; height:24px; border-radius:50%; cursor:pointer; margin-left:20px;" onclick="switchTab('profile')">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="header">
+                <img src="" alt="Me" class="user-avatar" id="myAvatar">
+                <div class="header-icons">
+                    <button class="icon-btn" id="toggleAddContactBtn"><i class="ri-user-add-line"></i></button>
+                    <button class="icon-btn" id="logoutBtn"><i class="ri-logout-box-r-line"></i></button>
                 </div>
             </div>
-        </nav>
 
-        <!-- A. Feed View -->
-        <div id="feedView" class="main-content">
-            <div class="feed-container">
-                
-                <!-- Stories -->
-                <div class="stories-wrapper">
-                    <div class="story" onclick="switchTab('profile')">
-                        <div class="story-ring"><img id="feedMyStoryImg" src=""></div>
-                        <span class="story-username">Your Story</span>
+            <!-- Add Contact Input -->
+            <div class="add-contact-form" id="addContactForm">
+                <input type="text" id="addContactInput" placeholder="Enter username to add...">
+            </div>
+
+            <div class="chat-list" id="chatList">
+                <!-- Contacts load here -->
+            </div>
+        </aside>
+
+        <!-- Chat Area -->
+        <main class="chat-area" id="chatArea">
+            <div class="empty-state" id="emptyState">
+                <i class="ri-chat-smile-2-line" style="font-size: 4rem; color: #8ba0a6;"></i>
+                <h2 style="margin-top: 20px;">Zuber Web</h2>
+                <p>Send and receive messages without keeping your phone online.</p>
+            </div>
+
+            <div style="display: none; flex-direction: column; height: 100%;" id="activeChatView">
+                <header class="chat-area-header">
+                    <i class="ri-arrow-left-line back-btn" id="backBtn"></i>
+                    <img src="" alt="User" class="user-avatar" id="currentChatAvatar" style="margin-right: 10px;">
+                    <div>
+                        <div class="contact-name" id="currentChatName">User Name</div>
+                        <div style="font-size: 0.75rem; color: #667781;">online</div>
                     </div>
-                </div>
+                </header>
 
-                <!-- Posts Feed -->
-                <div id="feedList">
-                    <div style="text-align:center; padding:40px; color:#8e8e8e;">Loading feed...</div>
-                </div>
-            </div>
-        </div>
+                <div class="messages-container" id="messagesContainer"></div>
 
-        <!-- B. Profile View -->
-        <div id="profileView" class="profile-container" style="display: none;">
-            <div class="profile-header">
-                <div class="profile-img-container">
-                    <img id="profilePagePic" class="profile-pic-lg">
-                </div>
-                <div class="profile-info">
-                    <div class="profile-top-row">
-                        <h2 id="profileUsername" class="username-lg">username</h2>
-                        <button class="btn-edit-profile" id="openEditProfileBtn">Edit Profile</button>
-                        <button class="btn-settings" id="logoutBtn" title="Log Out"><i class="ri-settings-3-line"></i></button>
+                <footer class="chat-footer">
+                    <div class="input-box">
+                        <input type="text" id="messageInput" placeholder="Type a message">
                     </div>
-                    <div class="stats-row">
-                        <span><strong id="postsCount">0</strong> posts</span>
-                        <span><strong>0</strong> followers</span>
-                        <span><strong>0</strong> following</span>
-                    </div>
-                    <div class="bio-details">
-                        <div class="bio-name" id="profileNameDisplay">User Name</div>
-                        <div class="bio-text" id="profileBioDisplay">Add a bio...</div>
-                    </div>
-                </div>
+                    <i class="ri-send-plane-fill send-icon" id="sendBtn"></i>
+                </footer>
             </div>
-
-            <div class="profile-tabs">
-                <div class="tab active"><i class="ri-grid-fill"></i> POSTS</div>
-                <div class="tab">SAVED</div>
-                <div class="tab">TAGGED</div>
-            </div>
-
-            <div class="profile-grid" id="profileGrid">
-                <!-- User posts will go here -->
-            </div>
-        </div>
-
+        </main>
     </div>
 
-    <!-- Create Post Modal -->
-    <div id="createPostModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                Create new post
-                <span class="close-modal" id="closeModalBtn">Cancel</span>
-            </div>
-            <div class="modal-body">
-                <input type="file" id="postFileInput" accept="image/*">
-                <img id="postPreview" class="preview-img">
-                <input type="text" id="postCaption" placeholder="Write a caption...">
-                <button class="upload-btn" id="sharePostBtn">Share</button>
-            </div>
-        </div>
-    </div>
+</div>
 
-    <!-- Edit Profile Modal -->
-    <div id="editProfileModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                Edit Profile
-                <span class="close-modal" id="closeEditModalBtn">X</span>
-            </div>
-            <div class="modal-body">
-                <label style="font-weight:600; font-size:0.8rem;">Name</label>
-                <input type="text" id="editNameInput">
-                
-                <label style="font-weight:600; font-size:0.8rem;">Bio</label>
-                <textarea id="editBioInput" style="width:100%; padding:9px; border:1px solid var(--border); border-radius:3px;" rows="3"></textarea>
-                
-                <button class="upload-btn" id="saveProfileBtn">Save Changes</button>
-            </div>
-        </div>
-    </div>
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, set, onValue, push, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        // Import functions
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, set, onValue, push, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyChKPlzj9uVm3KBi4iPOz8xQHtC6v0Lt4E",
+        authDomain: "krp-bank.firebaseapp.com",
+        databaseURL: "https://krp-bank-default-rtdb.firebaseio.com",
+        projectId: "krp-bank",
+        storageBucket: "krp-bank.firebasestorage.app",
+        messagingSenderId: "911407082396",
+        appId: "1:911407082396:web:c5af104a844e2697797659",
+        measurementId: "G-R0J2TLLC3T"
+    };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyChKPlzj9uVm3KBi4iPOz8xQHtC6v0Lt4E",
-            authDomain: "krp-bank.firebaseapp.com",
-            databaseURL: "https://krp-bank-default-rtdb.firebaseio.com",
-            projectId: "krp-bank",
-            storageBucket: "krp-bank.firebasestorage.app",
-            messagingSenderId: "911407082396",
-            appId: "1:911407082396:web:c5af104a844e2697797659",
-            measurementId: "G-R0J2TLLC3T"
-        };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
-        const storage = getStorage(app);
+    // --- DOM Elements ---
+    const authScreen = document.getElementById('authScreen');
+    const setupScreen = document.getElementById('setupScreen');
+    const appScreen = document.getElementById('appScreen');
+    
+    // Auth Forms
+    const loginBox = document.getElementById('loginBox');
+    const signupBox = document.getElementById('signupBox');
+    const goToSignup = document.getElementById('goToSignup');
+    const goToLogin = document.getElementById('goToLogin');
+    
+    // Chat Elements
+    const chatListEl = document.getElementById('chatList');
+    const emptyStateEl = document.getElementById('emptyState');
+    const activeChatViewEl = document.getElementById('activeChatView');
+    const messagesContainerEl = document.getElementById('messagesContainer');
+    const currentChatNameEl = document.getElementById('currentChatName');
+    const currentChatAvatarEl = document.getElementById('currentChatAvatar');
+    const messageInputEl = document.getElementById('messageInput');
+    const sendBtnEl = document.getElementById('sendBtn');
+    const addContactForm = document.getElementById('addContactForm');
+    const addContactInput = document.getElementById('addContactInput');
+    const myAvatarEl = document.getElementById('myAvatar');
+    const appContainerEl = document.getElementById('appContainer');
 
-        // --- DOM Elements ---
-        const authScreen = document.getElementById('authScreen');
-        const setupScreen = document.getElementById('setupScreen');
-        const appScreen = document.getElementById('appScreen');
-        
-        // Views
-        const feedView = document.getElementById('feedView');
-        const profileView = document.getElementById('profileView');
+    // --- State ---
+    let currentUser = null;
+    let currentUsername = null;
+    let currentChatId = null; // The ID of the active conversation
+    let activeContactUid = null; // The UID of the person we are talking to
 
-        // Profile Elements
-        const profilePagePic = document.getElementById('profilePagePic');
-        const profileUsername = document.getElementById('profileUsername');
-        const profileNameDisplay = document.getElementById('profileNameDisplay');
-        const profileBioDisplay = document.getElementById('profileBioDisplay');
-        const postsCountEl = document.getElementById('postsCount');
-        const profileGrid = document.getElementById('profileGrid');
+    // --- Auth Logic ---
 
-        // Auth Elements
-        const googleLoginBtn = document.getElementById('googleLoginBtn');
-        const usernameInput = document.getElementById('usernameInput');
-        const saveUsernameBtn = document.getElementById('saveUsernameBtn');
-        const setupProfilePic = document.getElementById('setupProfilePic');
-        const navProfilePic = document.getElementById('navProfilePic');
-        const feedMyStoryImg = document.getElementById('feedMyStoryImg');
+    goToSignup.onclick = () => { loginBox.style.display = 'none'; signupBox.style.display = 'block'; };
+    goToLogin.onclick = () => { signupBox.style.display = 'none'; loginBox.style.display = 'block'; };
 
-        // Modals
-        const openCreatePostBtn = document.getElementById('openCreatePostBtn');
-        const createPostModal = document.getElementById('createPostModal');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        
-        const openEditProfileBtn = document.getElementById('openEditProfileBtn');
-        const editProfileModal = document.getElementById('editProfileModal');
-        const closeEditModalBtn = document.getElementById('closeEditModalBtn');
-        const saveProfileBtn = document.getElementById('saveProfileBtn');
+    document.getElementById('signupBtn').addEventListener('click', () => {
+        const email = document.getElementById('signupEmail').value;
+        const pass = document.getElementById('signupPass').value;
+        if(!email || !pass) return alert("Please fill all fields");
+        createUserWithEmailAndPassword(auth, email, pass)
+            .catch((error) => alert(error.message));
+    });
 
-        const logoutBtn = document.getElementById('logoutBtn');
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPass').value;
+        signInWithEmailAndPassword(auth, email, pass)
+            .catch((error) => alert(error.message));
+    });
 
-        // Inputs
-        const postFileInput = document.getElementById('postFileInput');
-        const postPreview = document.getElementById('postPreview');
-        const postCaption = document.getElementById('postCaption');
-        const sharePostBtn = document.getElementById('sharePostBtn');
-        const editNameInput = document.getElementById('editNameInput');
-        const editBioInput = document.getElementById('editBioInput');
+    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
-        // --- Global State ---
-        let currentUser = null;
-        let currentUserData = null; // Stores bio, name, etc from DB
-
-        // --- Window Exposed Functions ---
-        window.switchTab = function(tab) {
-            if (tab === 'home') {
-                feedView.style.display = 'flex';
-                profileView.style.display = 'none';
-                document.getElementById('navHomeBtn').classList.add('ri-home-5-fill');
-                document.getElementById('navHomeBtn').classList.remove('ri-home-5-line');
-            } else if (tab === 'profile') {
-                feedView.style.display = 'none';
-                profileView.style.display = 'block';
-                document.getElementById('navHomeBtn').classList.remove('ri-home-5-fill');
-                document.getElementById('navHomeBtn').classList.add('ri-home-5-line');
-                loadProfileData();
-            }
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            myAvatarEl.src = `https://ui-avatars.com/api/?name=${user.email}&background=random`;
+            checkUsername(user.uid);
+        } else {
+            showScreen('authScreen');
+            currentUser = null;
         }
+    });
 
-        // --- Auth Logic ---
-        googleLoginBtn.addEventListener('click', () => {
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch((error) => alert(error.message));
-        });
-
-        logoutBtn.addEventListener('click', () => {
-            signOut(auth).then(() => {
-                window.location.reload();
-            });
-        });
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                setupProfilePic.src = user.photoURL;
-                navProfilePic.src = user.photoURL;
-                feedMyStoryImg.src = user.photoURL;
-                checkUsernameExists(user.uid);
+    function checkUsername(uid) {
+        get(ref(db, 'users/' + uid)).then((snapshot) => {
+            if (snapshot.exists()) {
+                currentUsername = snapshot.val().username;
+                showScreen('appScreen');
+                loadContacts();
             } else {
-                showScreen('authScreen');
-                currentUser = null;
+                showScreen('setupScreen');
             }
         });
+    }
 
-        function checkUsernameExists(uid) {
-            get(ref(db, 'users/' + uid)).then((snapshot) => {
-                if (snapshot.exists()) {
-                    currentUserData = snapshot.val();
+    document.getElementById('saveUsernameBtn').addEventListener('click', () => {
+        const username = document.getElementById('usernameInput').value.trim();
+        if(!username) return alert("Username required");
+
+        // Check if username taken
+        get(ref(db, 'usernames/' + username)).then((snap) => {
+            if (snap.exists()) {
+                alert("Username already taken!");
+            } else {
+                // Save username mapping and user data
+                set(ref(db, 'usernames/' + username), currentUser.uid);
+                set(ref(db, 'users/' + currentUser.uid), {
+                    username: username,
+                    email: currentUser.email,
+                    uid: currentUser.uid
+                }).then(() => {
+                    currentUsername = username;
                     showScreen('appScreen');
-                    loadFeed();
-                    loadStories();
+                    loadContacts();
+                });
+            }
+        });
+    });
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // --- Add Contact Logic ---
+    
+    document.getElementById('toggleAddContactBtn').addEventListener('click', () => {
+        addContactForm.classList.toggle('active');
+        if(addContactForm.classList.contains('active')) addContactInput.focus();
+    });
+
+    addContactInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const searchName = addContactInput.value.trim().toLowerCase();
+            if(!searchName) return;
+
+            // 1. Search in usernames node
+            get(ref(db, 'usernames/' + searchName)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const friendUid = snapshot.val();
+                    if (friendUid === currentUser.uid) {
+                        alert("You can't add yourself!");
+                        return;
+                    }
+                    
+                    // 2. Add to my contacts list
+                    set(ref(db, `users/${currentUser.uid}/contacts/${friendUid}`), {
+                        username: searchName,
+                        timestamp: Date.now()
+                    }).then(() => {
+                        addContactInput.value = '';
+                        addContactForm.classList.remove('active');
+                        alert("Contact Added!");
+                    });
+
                 } else {
-                    showScreen('setupScreen');
+                    alert("User not found!");
                 }
             });
         }
+    });
 
-        saveUsernameBtn.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            if (username.length < 3) return alert("Username too short");
-            
-            set(ref(db, 'users/' + currentUser.uid), {
-                username: username,
-                email: currentUser.email,
-                profilePic: currentUser.photoURL,
-                name: currentUser.displayName,
-                bio: "Welcome to my Zuber profile!"
-            }).then(() => {
-                // Refetch data
-                checkUsernameExists(currentUser.uid);
+    // --- Contacts & Chat Logic ---
+
+    function loadContacts() {
+        const contactsRef = ref(db, `users/${currentUser.uid}/contacts`);
+        onValue(contactsRef, (snapshot) => {
+            chatListEl.innerHTML = "";
+            const contacts = [];
+            snapshot.forEach((child) => {
+                contacts.push({ uid: child.key, ...child.val() });
             });
-        });
+            // Sort by timestamp
+            contacts.sort((a, b) => b.timestamp - a.timestamp);
 
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
+            if(contacts.length === 0) {
+                chatListEl.innerHTML = `<div style="padding:20px; text-align:center; color:#888;">No contacts added. Click + to add.</div>`;
+            }
 
-        // --- Feed Logic ---
-        function loadFeed() {
-            const postsRef = ref(db, 'posts');
-            onValue(postsRef, (snapshot) => {
-                const feedList = document.getElementById('feedList');
-                feedList.innerHTML = "";
-                const posts = [];
-                snapshot.forEach((childSnapshot) => posts.push(childSnapshot.val()));
-                posts.reverse().forEach(post => createPostElement(post));
-            });
-        }
-
-        function createPostElement(post) {
-            const isLiked = post.likes && post.likes[currentUser.uid];
-            const likeClass = isLiked ? 'ri-heart-3-fill liked' : 'ri-heart-3-line';
-            const likesCount = post.likes ? Object.keys(post.likes).length : 0;
-
-            const div = document.createElement('div');
-            div.className = 'post-card';
-            div.innerHTML = `
-                <div class="post-header">
-                    <div class="post-user" onclick="alert('Going to ${post.username} profile...')">
-                        <img src="${post.userProfilePic || 'https://picsum.photos/50'}">
-                        <span>${post.username}</span>
-                    </div>
-                    <i class="ri-more-fill" style="cursor:pointer;"></i>
-                </div>
-                <img src="${post.imageUrl}" class="post-image" ondblclick="handleLike('${post.postId}')">
-                <div class="post-actions">
-                    <i class="${likeClass}" id="likeBtn-${post.postId}" onclick="handleLike('${post.postId}')"></i>
-                    <i class="ri-chat-3-line"></i>
-                    <i class="ri-send-plane-fill"></i>
-                    <i class="ri-bookmark-line" style="margin-left:auto;"></i>
-                </div>
-                <div class="post-likes" id="likesCount-${post.postId}">${likesCount} likes</div>
-                <div class="post-caption">
-                    <span>${post.username}</span> ${post.caption}
-                </div>
-            `;
-            document.getElementById('feedList').appendChild(div);
-        }
-
-        window.handleLike = function(postId) {
-            const postRef = ref(db, 'posts/' + postId + '/likes/' + currentUser.uid);
-            get(postRef).then((snapshot) => {
-                set(postRef, snapshot.exists() ? null : true);
-            });
-        }
-
-        // --- Stories ---
-        function loadStories() {
-            const usersRef = ref(db, 'users');
-            onValue(usersRef, (snapshot) => {
-                const storiesWrapper = document.querySelector('.stories-wrapper');
-                storiesWrapper.innerHTML = `
-                    <div class="story" onclick="switchTab('profile')">
-                        <div class="story-ring"><img src="${currentUser.photoURL}"></div>
-                        <span class="story-username">Your Story</span>
+            contacts.forEach(contact => {
+                const div = document.createElement('div');
+                div.className = 'chat-item';
+                div.onclick = () => openChat(contact.uid, contact.username);
+                div.innerHTML = `
+                    <img src="https://ui-avatars.com/api/?name=${contact.username}&background=random">
+                    <div class="chat-info">
+                        <div class="chat-name">${contact.username}</div>
+                        <div class="chat-preview">Tap to chat</div>
                     </div>
                 `;
-                snapshot.forEach((childSnapshot) => {
-                    const user = childSnapshot.val();
-                    if(user.username !== currentUserData.username) {
-                        const div = document.createElement('div');
-                        div.className = 'story';
-                        div.innerHTML = `
-                            <div class="story-ring"><img src="${user.profilePic}"></div>
-                            <span class="story-username">${user.username}</span>
-                        `;
-                        storiesWrapper.appendChild(div);
-                    }
-                });
+                chatListEl.appendChild(div);
             });
-        }
-
-        // --- Profile Page Logic ---
-        function loadProfileData() {
-            if (!currentUserData) return;
-            
-            // Update Text UI
-            profilePagePic.src = currentUserData.profilePic;
-            profileUsername.innerText = currentUserData.username;
-            profileNameDisplay.innerText = currentUserData.name || "User";
-            profileBioDisplay.innerText = currentUserData.bio || "No bio yet.";
-            
-            // Edit Modal Pre-fill
-            editNameInput.value = currentUserData.name || "";
-            editBioInput.value = currentUserData.bio || "";
-
-            // Load My Posts
-            const postsRef = ref(db, 'posts');
-            onValue(postsRef, (snapshot) => {
-                const myPosts = [];
-                snapshot.forEach((child) => {
-                    const post = child.val();
-                    if (post.uid === currentUser.uid) myPosts.push(post);
-                });
-                
-                postsCountEl.innerText = myPosts.length;
-                profileGrid.innerHTML = "";
-                
-                myPosts.reverse().forEach(post => {
-                    const div = document.createElement('div');
-                    div.className = 'grid-item';
-                    div.innerHTML = `
-                        <img src="${post.imageUrl}">
-                        <div class="grid-overlay">
-                            <i class="ri-heart-fill"></i> ${post.likes ? Object.keys(post.likes).length : 0} &nbsp;&nbsp;
-                            <i class="ri-chat-3-fill"></i> 0
-                        </div>
-                    `;
-                    profileGrid.appendChild(div);
-                });
-            });
-        }
-
-        // --- Edit Profile Logic ---
-        openEditProfileBtn.addEventListener('click', () => {
-            editProfileModal.classList.add('active');
         });
+    }
+
+    function openChat(friendUid, friendName) {
+        activeContactUid = friendUid;
+        // Create unique Chat ID: sort the two UIDs and join them
+        currentChatId = [currentUser.uid, friendUid].sort().join('_');
+
+        // UI Updates
+        emptyStateEl.style.display = 'none';
+        activeChatViewEl.style.display = 'flex';
+        currentChatNameEl.innerText = friendName;
+        currentChatAvatarEl.src = `https://ui-avatars.com/api/?name=${friendName}&background=random`;
         
-        closeEditModalBtn.addEventListener('click', () => {
-            editProfileModal.classList.remove('active');
-        });
+        // Mobile View Switch
+        appContainerEl.classList.add('chat-active');
 
-        saveProfileBtn.addEventListener('click', () => {
-            update(ref(db, 'users/' + currentUser.uid), {
-                name: editNameInput.value,
-                bio: editBioInput.value
-            }).then(() => {
-                editProfileModal.classList.remove('active');
-                loadProfileData(); // Refresh UI
+        loadMessages();
+    }
+
+    function loadMessages() {
+        if(!currentChatId) return;
+        const messagesRef = ref(db, `chats/${currentChatId}`);
+        onValue(messagesRef, (snapshot) => {
+            messagesContainerEl.innerHTML = "";
+            const msgs = [];
+            snapshot.forEach((child) => msgs.push(child.val()));
+            msgs.sort((a, b) => a.timestamp - b.timestamp);
+
+            msgs.forEach(msg => {
+                const div = document.createElement('div');
+                const isMine = msg.sender === currentUser.uid;
+                div.className = `message ${isMine ? 'outgoing' : 'incoming'}`;
+                
+                const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const tick = isMine ? '<i class="ri-check-double-line"></i>' : '';
+
+                div.innerHTML = `
+                    <div class="msg-content">${msg.text}</div>
+                    <div class="msg-meta">
+                        <span>${time}</span> ${tick}
+                    </div>
+                `;
+                messagesContainerEl.appendChild(div);
             });
+            messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
         });
+    }
 
-        // --- Create Post Logic ---
-        openCreatePostBtn.addEventListener('click', () => createPostModal.classList.add('active'));
-        closeModalBtn.addEventListener('click', () => {
-            createPostModal.classList.remove('active');
-            resetCreateForm();
+    // Send Message
+    messageInputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    
+    sendBtnEl.addEventListener('click', sendMessage);
+
+    function sendMessage() {
+        const text = messageInputEl.value.trim();
+        if(!text || !currentChatId) return;
+
+        push(ref(db, `chats/${currentChatId}`), {
+            sender: currentUser.uid,
+            text: text,
+            timestamp: Date.now()
+        }).then(() => {
+            messageInputEl.value = '';
         });
+    }
 
-        postFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                postPreview.src = URL.createObjectURL(file);
-                postPreview.style.display = 'block';
-            }
-        });
+    // Mobile Back Button
+    document.getElementById('backBtn').addEventListener('click', () => {
+        appContainerEl.classList.remove('chat-active');
+    });
 
-        sharePostBtn.addEventListener('click', async () => {
-            const file = postFileInput.files[0];
-            const caption = postCaption.value;
-            if (!file && !caption) return;
-
-            const postId = push(ref(db, 'posts')).key;
-            let imageUrl = `https://picsum.photos/seed/${postId}/600/600`; 
-
-            sharePostBtn.innerText = "Sharing...";
-
-            if (file) {
-                try {
-                    const storageRef = sRef(storage, 'posts/' + postId);
-                    await uploadBytes(storageRef, file);
-                    imageUrl = await getDownloadURL(storageRef);
-                } catch (error) {
-                    console.warn("Upload failed, using placeholder.");
-                }
-            }
-
-            set(ref(db, 'posts/' + postId), {
-                postId: postId,
-                uid: currentUser.uid,
-                username: currentUserData.username,
-                userProfilePic: currentUserData.profilePic,
-                imageUrl: imageUrl,
-                caption: caption,
-                timestamp: Date.now()
-            }).then(() => {
-                createPostModal.classList.remove('active');
-                resetCreateForm();
-                sharePostBtn.innerText = "Share";
-            });
-        });
-
-        function resetCreateForm() {
-            postFileInput.value = '';
-            postCaption.value = '';
-            postPreview.style.display = 'none';
-            postPreview.src = '';
-        }
-
-    </script>
+</script>
 </body>
 </html>
