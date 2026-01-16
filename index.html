@@ -105,7 +105,6 @@
         .modal-header { display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center; }
         .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
-        /* Receipt Styles */
         .receipt-box {
             background: #f9f9f9; border: 1px dashed #ccc; padding: 15px; border-radius: 8px; margin-top: 10px;
         }
@@ -146,9 +145,24 @@
         .admin-section { display: none; max-height: 300px; overflow-y: auto; }
         .admin-section.active { display: block; }
         .admin-evidence-img { max-width: 150px; border-radius: 4px; margin-top: 5px; border: 1px solid #ccc; cursor: pointer; }
+
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
+            border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+    <!-- Global Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
 
     <!-- Banned Overlay -->
     <div id="banned-overlay">
@@ -255,7 +269,6 @@
     </div>
 
     <!-- Modals -->
-    <!-- Edit Profile -->
     <div id="edit-profile-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Update Profile Picture</h3><button class="close-modal">&times;</button></div>
@@ -268,7 +281,6 @@
         </div>
     </div>
 
-    <!-- Add Contact -->
     <div id="add-contact-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Add Contact</h3><button class="close-modal">&times;</button></div>
@@ -277,7 +289,6 @@
         </div>
     </div>
 
-    <!-- Verification -->
     <div id="verify-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Request Verification</h3><button class="close-modal">&times;</button></div>
@@ -287,7 +298,6 @@
         </div>
     </div>
 
-    <!-- Report Modal (UPDATED with Image Upload) -->
     <div id="report-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Report User</h3><button class="close-modal">&times;</button></div>
@@ -295,13 +305,12 @@
             
             <label style="font-size:0.9rem; font-weight:600; margin-bottom:5px; display:block;">Upload Screenshot (Evidence)</label>
             <input type="file" id="report-evidence-input" class="input-field" accept="image/*">
-            <small style="color: #666; font-size: 0.8rem; display:block; margin-bottom:10px">Max size: 1MB.</small>
+            <small style="color: #666; font-size: 0.8rem; display:block; margin-bottom:10px">Max size: 2MB. Image will be auto-compressed.</small>
             
             <button class="btn-primary" id="submit-report-btn" style="background: var(--danger);">Submit Report</button>
         </div>
     </div>
 
-    <!-- RECEIPT MODAL (Generic for Report & Verification) -->
     <div id="receipt-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -313,7 +322,6 @@
         </div>
     </div>
 
-    <!-- Admin Panel -->
     <div id="admin-modal" class="modal">
         <div class="modal-content" style="max-width:550px;">
             <div class="modal-header"><h3>Admin Panel</h3><button class="close-modal">&times;</button></div>
@@ -325,7 +333,6 @@
                 <button class="admin-tab" data-tab="reports">Reports</button>
             </div>
 
-            <!-- Control -->
             <div id="tab-control" class="admin-section active">
                 <div style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px">
                     <h4>Manual Control</h4>
@@ -339,7 +346,6 @@
                 </div>
             </div>
 
-            <!-- Appeals -->
             <div id="tab-appeals" class="admin-section">
                 <div style="max-height:300px; overflow-y:auto">
                     <h4>Ban Appeals</h4>
@@ -347,7 +353,6 @@
                 </div>
             </div>
 
-            <!-- Requests -->
             <div id="tab-requests" class="admin-section">
                 <div style="max-height:300px; overflow-y:auto">
                     <h4>Verification Requests</h4>
@@ -355,7 +360,6 @@
                 </div>
             </div>
 
-            <!-- Reports -->
             <div id="tab-reports" class="admin-section">
                 <div style="max-height:300px; overflow-y:auto">
                     <h4>User Reports</h4>
@@ -365,7 +369,6 @@
         </div>
     </div>
 
-    <!-- Emoji Picker -->
     <div id="emoji-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Emoji</h3><button class="close-modal">&times;</button></div>
@@ -403,7 +406,7 @@
         let activeChatListener = null;
         let setupBase64 = "";
         let editBase64 = "";
-        let reportEvidenceBase64 = ""; // New
+        let reportEvidenceBase64 = "";
         let renderedMsgTimestamps = new Set();
 
         const els = {
@@ -470,7 +473,8 @@
             submitReportBtn: document.getElementById('submit-report-btn'),
             receiptModal: document.getElementById('receipt-modal'),
             receiptContent: document.getElementById('receipt-content'),
-            closeReceiptBtn: document.getElementById('close-receipt-btn')
+            closeReceiptBtn: document.getElementById('close-receipt-btn'),
+            loadingOverlay: document.getElementById('loading-overlay')
         };
 
         const showScreen = (id) => els.screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -480,6 +484,40 @@
             x.innerHTML = `<i class="fas ${t==='error'?'fa-exclamation-circle':(t==='success'?'fa-check-circle':'fa-envelope')}"></i> ${msg}`;
             c.appendChild(x); setTimeout(()=>x.remove(), 3000);
         };
+        const showLoading = (show) => els.loadingOverlay.style.display = show ? 'flex' : 'none';
+
+        // --- ULTRA COMPRESSOR (AI LOGIC) ---
+        // Reduces image size to save DB space
+        const compressImage = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        // 0.6 Quality for compression
+                        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        };
+
+        const fileToBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
 
         // --- LOCAL STORAGE MANAGER ---
         const LS = {
@@ -513,13 +551,6 @@
                 }
             }
         }
-
-        const fileToBase64 = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-        });
 
         // --- AUTH ---
         els.googleBtn.onclick = () => signInWithPopup(auth, provider).catch(e => showToast(e.message, 'error'));
@@ -633,6 +664,9 @@
 
         // --- MAIN APP ---
         function initApp() {
+            // Auto-DB Cleanup: Clear old notifications on startup to save space
+            remove(ref(db, 'notifications/' + currentUser.uid)); 
+
             updateMyProfileUI(currentUserData);
 
             const myProfileRef = ref(db, 'users/' + currentUser.uid);
@@ -651,6 +685,8 @@
                 if(notif.from !== currentUserData.username) {
                     showToast(`New message arrived from ${notif.from}`, 'info');
                 }
+                // Cleanup Notification Logic: Auto remove after showing
+                remove(snapshot.ref);
             });
 
             const localContacts = LS.get('my_contacts');
@@ -810,7 +846,6 @@
                 }
             });
 
-            // Report Logic
             els.reportUserBtn.onclick = () => { 
                 els.reportReason.value = '';
                 els.reportEvidenceInput.value = '';
@@ -831,6 +866,7 @@
                     renderMsg(msg);
                     scrollToBottom();
 
+                    // Clean up chat from DB to save space (Core feature)
                     setTimeout(() => {
                         remove(ref(db, `chats/${cid}/${msgKey}`));
                     }, 5000);
@@ -898,23 +934,27 @@
             }
         };
 
-        // --- REPORT SUBMIT LOGIC (UPDATED) ---
+        // --- REPORT SUBMIT LOGIC (OPTIMIZED) ---
         els.submitReportBtn.onclick = async () => {
             const reason = els.reportReason.value.trim();
             const file = els.reportEvidenceInput.files[0];
 
             if(!reason) return showToast("Enter reason", 'error');
             
+            let finalBase64 = null;
+
             if(file) {
-                if(file.size > 1000000) { showToast("Screenshot too large! Max 1MB", 'error'); return; }
+                if(file.size > 2000000) { showToast("Screenshot too large! Max 2MB", 'error'); return; }
                 try {
-                    reportEvidenceBase64 = await fileToBase64(file);
+                    showLoading(true);
+                    // AI Compression Logic
+                    finalBase64 = await compressImage(file);
+                    showLoading(false);
                 } catch(err) {
+                    showLoading(false);
                     showToast("Error processing image", 'error');
                     return;
                 }
-            } else {
-                reportEvidenceBase64 = null;
             }
 
             const reportData = {
@@ -923,14 +963,13 @@
                 reported: selectedUser.uid,
                 username: selectedUser.username,
                 reason: reason,
-                evidence: reportEvidenceBase64,
+                evidence: finalBase64,
                 status: 'pending',
                 timestamp: Date.now()
             };
 
             const repRef = await push(ref(db, 'reports'), reportData);
             
-            // Show Receipt
             showReceipt('report', repRef.key, reportData);
 
             els.reportModal.classList.remove('open');
@@ -938,7 +977,7 @@
             els.reportEvidenceInput.value = '';
         };
 
-        // --- VERIFICATION SUBMIT LOGIC (UPDATED) ---
+        // --- VERIFICATION SUBMIT LOGIC ---
         els.verifyBtn.onclick = () => {
             if(currentUserData.verified) {
                 showToast("You are already verified!", 'success');
@@ -963,7 +1002,6 @@
             const reqData = { profession, reason, status: 'pending', username: currentUserData.username, uid: currentUser.uid };
             const reqRef = await push(ref(db, 'verificationRequests'), reqData);
 
-            // Show Receipt
             showReceipt('verify', reqRef.key, reqData);
 
             els.verifyModal.classList.remove('open');
@@ -972,7 +1010,6 @@
             els.verifyReason.value = '';
         };
 
-        // --- RECEIPT UI LOGIC ---
         function showReceipt(type, id, data) {
             els.receiptContent.innerHTML = '';
             const box = document.createElement('div');
@@ -1004,7 +1041,7 @@
 
         els.closeReceiptBtn.onclick = () => { els.receiptModal.classList.remove('open'); };
 
-        // --- ADMIN PANEL ---
+        // --- ADMIN PANEL (AUTO CLEANUP LOGIC) ---
         function loadAdminPanel() {
             document.querySelectorAll('.admin-tab').forEach(tab => {
                 tab.onclick = () => {
@@ -1052,7 +1089,6 @@
                 });
             });
 
-            // ADMIN REPORTS (ULTRA UPGRADED)
             onValue(ref(db, 'reports'), s => {
                 els.adminReportsList.innerHTML = '';
                 if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
@@ -1092,39 +1128,40 @@
             return s.exists() ? s.val() : null;
         };
 
+        // --- ADMIN ACTIONS (AUTO DELETE LOGIC) ---
         window.acceptAdmin = async (uid) => {
             await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
-            await remove(ref(db, 'verificationRequests/'+uid));
+            await remove(ref(db, 'verificationRequests/'+uid)); // Delete request from DB
             sendSystemMsg(uid, "Congratulations! Your blue tick request has been accepted.");
             showToast("Accepted", 'success');
         };
         window.rejectAdmin = async (uid) => {
             await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
-            await remove(ref(db, 'verificationRequests/'+uid));
+            await remove(ref(db, 'verificationRequests/'+uid)); // Delete request from DB
             sendSystemMsg(uid, "Sorry, your request was rejected.");
             showToast("Rejected", 'info');
         };
 
         window.acceptAppeal = async (uid) => {
             await update(ref(db, 'users/'+uid), { isBanned: false });
-            await remove(ref(db, 'banAppeals/'+uid));
+            await remove(ref(db, 'banAppeals/'+uid)); // Delete appeal from DB
             sendSystemMsg(uid, "Your ban appeal has been accepted. Unbanned.");
             showToast("Unbanned", 'success');
         };
 
         window.rejectAppeal = async (uid) => {
-            await remove(ref(db, 'banAppeals/'+uid));
+            await remove(ref(db, 'banAppeals/'+uid)); // Delete appeal from DB
             sendSystemMsg(uid, "Your ban appeal has been rejected.");
             showToast("Appeal Rejected", 'info');
         };
 
         window.acceptReport = async (repKey, uid) => {
             await update(ref(db, 'users/'+uid), { isBanned: true });
-            await update(ref(db, `reports/${repKey}`), { status: 'accepted' });
+            await remove(ref(db, `reports/${repKey}`)); // Delete report from DB
             showToast("User Banned", 'success');
         };
         window.rejectReport = async (repKey) => {
-            await remove(ref(db, `reports/${repKey}`));
+            await remove(ref(db, `reports/${repKey}`)); // Delete report from DB
             showToast("Report Rejected", 'info');
         };
 
