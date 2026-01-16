@@ -66,6 +66,7 @@
         .contact-item.active { background: #f0f2f5; }
         .contact-info { flex: 1; margin-left: 12px; overflow: hidden; }
         .contact-name { font-weight: 500; font-size: 1.05rem; }
+        .last-msg-preview { font-size: 0.85rem; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
 
         .chat-header { padding: 10px 16px; background: var(--light-gray); display: flex; justify-content: space-between; align-items: center; height: 70px; border-bottom: 1px solid #d1d7db; flex-shrink: 0; }
         .chat-header-info { display: flex; flex-direction: column; justify-content: center; }
@@ -112,6 +113,7 @@
         .toast { background: #323232; color: white; padding: 12px 24px; border-radius: 4px; font-size: 0.9rem; animation: fadeInOut 3s forwards; display: flex; align-items: center; gap: 10px; pointer-events: auto; }
         .toast.error { background: #d32f2f; }
         .toast.success { background: #2e7d32; }
+        .toast.info { background: #0288d1; } /* Added for messages */
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
 
         #banned-overlay {
@@ -370,10 +372,10 @@
         let currentUserData = null;
         let selectedChatId = null;
         let selectedUser = null;
-        let activeChatListener = null; // To unsubscribe from previous chat
+        let activeChatListener = null;
         let setupBase64 = "";
         let editBase64 = "";
-        let renderedMsgTimestamps = new Set(); // Track to prevent duplicates
+        let renderedMsgTimestamps = new Set();
 
         const els = {
             screens: document.querySelectorAll('.screen'),
@@ -442,7 +444,7 @@
         const showToast = (msg, t='info') => {
             const c = document.getElementById('toast-container');
             const x = document.createElement('div'); x.className = `toast ${t}`;
-            x.innerHTML = `<i class="fas ${t==='error'?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`;
+            x.innerHTML = `<i class="fas ${t==='error'?'fa-exclamation-circle':(t==='success'?'fa-check-circle':'fa-envelope')}"></i> ${msg}`;
             c.appendChild(x); setTimeout(()=>x.remove(), 3000);
         };
 
@@ -458,11 +460,28 @@
                 if(!h.find(m => m.timestamp === msg.timestamp)) {
                     h.push(msg);
                     LS.set(k, h);
+                    // Also update contact list preview in LS
+                    updateContactPreview(cid, msg);
                 }
             },
             getMsgs: (cid) => LS.get(`chat_${cid}`) || [],
             clearChat: (cid) => LS.remove(`chat_${cid}`)
         };
+
+        // Helper to update contact list preview
+        function updateContactPreview(cid, msg) {
+            const contacts = LS.get('my_contacts') || [];
+            const otherUid = cid.split('_').find(id => id !== currentUser.uid);
+            if(otherUid) {
+                const contact = contacts.find(c => c.uid === otherUid);
+                if(contact) {
+                    contact.lastMessage = msg.text;
+                    contact.lastTime = msg.timestamp;
+                    LS.set('my_contacts', contacts);
+                    renderContacts(contacts);
+                }
+            }
+        }
 
         const fileToBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -484,7 +503,6 @@
         onAuthStateChanged(auth, async (u) => {
             if(u) {
                 currentUser = u;
-                // Check LocalStorage Profile first
                 const localProfile = LS.get('my_profile');
                 if(localProfile && localProfile.uid === u.uid) {
                     currentUserData = localProfile;
@@ -496,14 +514,12 @@
                     }
                     showScreen('main-screen');
                     initApp();
-                    // Update Firebase Status in background
                     setupPresence();
                 } else {
-                    // Fetch from Firebase
                     const s = await get(ref(db, 'users/'+u.uid));
                     if(s.exists()) {
                         currentUserData = s.val();
-                        LS.set('my_profile', currentUserData); // Save to LS
+                        LS.set('my_profile', currentUserData);
                         if(currentUserData.isBanned) {
                             showScreen('main-screen');
                             els.bannedOverlay.classList.add('active');
@@ -566,13 +582,11 @@
             await set(ref(db, 'usernames/'+un), currentUser.uid);
             currentUserData = profile;
             
-            // SAVE TO LOCAL STORAGE
             LS.set('my_profile', profile);
             
             showScreen('main-screen'); initApp(); setupPresence();
         };
 
-        // --- PRESENCE ---
         function setupPresence() {
             const userStatusRef = ref(db, 'users/' + currentUser.uid + '/status');
             const lastOnlineRef = ref(db, 'users/' + currentUser.uid + '/lastOnline');
@@ -588,45 +602,34 @@
 
         // --- MAIN APP ---
         function initApp() {
-            els.myAvatar.src = currentUserData.photoURL;
-            els.myUsernameDisplay.innerText = currentUserData.username;
-            
-            // FIX 1: Add Realtime Listener to MY OWN profile
-            // This ensures the Blue Tick appears instantly when Admin approves it
+            // 1. Initial UI
+            updateMyProfileUI(currentUserData);
+
+            // 2. Realtime Listener for MY profile (Blue Tick Fix)
             const myProfileRef = ref(db, 'users/' + currentUser.uid);
             onValue(myProfileRef, (snap) => {
                 if(snap.exists()) {
                     const data = snap.val();
-                    currentUserData = data; // Update local state
-                    LS.set('my_profile', data); // Update LS cache
-
-                    // Update UI based on NEW state
-                    els.myAvatar.src = data.photoURL;
-                    els.myUsernameDisplay.innerText = data.username;
-                    
-                    if(data.verified) {
-                        els.myBlueTick.style.display = 'inline';
-                        // Hide verify button if already verified
-                        els.verifyBtn.style.display = 'none';
-                    } else {
-                        els.myBlueTick.style.display = 'none';
-                        // Show verify button only if not admin and not verified
-                        if(data.username !== 'zuber') {
-                            els.verifyBtn.style.display = 'block';
-                        }
-                    }
-
-                    // Handle Admin Button
-                    if(data.username.toLowerCase() === 'zuber') {
-                        els.adminPanelBtn.style.display = 'block';
-                        loadAdminPanel();
-                    } else {
-                        els.adminPanelBtn.style.display = 'none';
-                    }
+                    currentUserData = data; // Update Global State
+                    LS.set('my_profile', data); // Save to Storage (Permanent Save)
+                    updateMyProfileUI(data);
                 }
             });
 
-            // Load Contacts (LS first, then FB update)
+            // 3. Global Notifications Listener (New Message Fix)
+            // Uses onChildAdded to only trigger for NEW notifications
+            const notifRef = ref(db, 'notifications/' + currentUser.uid);
+            onChildAdded(notifRef, (snapshot) => {
+                const notif = snapshot.val();
+                // Only show if from someone else
+                if(notif.from !== currentUserData.username) {
+                    showToast(`New message arrived from ${notif.from}`, 'info');
+                }
+                // Optional: Remove notification after reading to keep list clean
+                // remove(snapshot.ref); 
+            });
+
+            // Load Contacts
             const localContacts = LS.get('my_contacts');
             if(localContacts) renderContacts(localContacts);
 
@@ -634,23 +637,47 @@
                 const val = snap.val();
                 if(val) {
                     const uids = Object.keys(val);
-                    // Fetch details
                     Promise.all(uids.map(async uid => {
                         let u = LS.get(`user_cache_${uid}`);
                         if(!u) {
                             const s = await get(ref(db, 'users/'+uid));
                             if(s.exists()) {
                                 u = s.val();
-                                LS.set(`user_cache_${u.uid}`, u); // Cache profile
+                                LS.set(`user_cache_${u.uid}`, u);
                             }
                         }
                         return u;
                     })).then(users => {
                         renderContacts(users.filter(u=>u));
-                        LS.set('my_contacts', users.filter(u=>u)); // Save list to LS
+                        LS.set('my_contacts', users.filter(u=>u));
                     });
                 }
             });
+        }
+
+        function updateMyProfileUI(data) {
+            if(!data) return;
+            els.myAvatar.src = data.photoURL || "";
+            els.myUsernameDisplay.innerText = data.username || "";
+            
+            if(data.verified) {
+                els.myBlueTick.style.display = 'inline';
+                els.verifyBtn.style.display = 'none';
+            } else {
+                els.myBlueTick.style.display = 'none';
+                if(data.username.toLowerCase() !== 'zuber') {
+                    els.verifyBtn.style.display = 'block';
+                } else {
+                    els.verifyBtn.style.display = 'none';
+                }
+            }
+
+            if(data.username.toLowerCase() === 'zuber') {
+                els.adminPanelBtn.style.display = 'block';
+                loadAdminPanel();
+            } else {
+                els.adminPanelBtn.style.display = 'none';
+            }
         }
 
         function renderContacts(users) {
@@ -659,7 +686,9 @@
             users.forEach(u => {
                 const div = document.createElement('div');
                 div.className = 'contact-item';
-                div.innerHTML = `<img src="${u.photoURL}" class="avatar"><div class="contact-info"><div class="contact-name">${u.username} ${u.verified?'<i class="fas fa-check-circle blue-tick"></i>':''}</div></div>`;
+                const tickHtml = u.verified ? '<i class="fas fa-check-circle blue-tick"></i>' : '';
+                const preview = u.lastMessage ? `<div class="last-msg-preview">${u.lastMessage}</div>` : '';
+                div.innerHTML = `<img src="${u.photoURL}" class="avatar"><div class="contact-info"><div class="contact-name">${u.username} ${tickHtml}</div>${preview}</div>`;
                 div.onclick = () => openChat(u);
                 els.contactsList.appendChild(div);
             });
@@ -668,14 +697,32 @@
         // --- CHAT LOGIC ---
         async function openChat(user) {
             selectedUser = user;
-            // 1. DETACH OLD LISTENER
             if(activeChatListener) activeChatListener();
 
             if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
             
-            els.currentChatName.innerText = user.username;
-            els.currentChatAvatar.src = user.photoURL;
-            els.chatBlueTick.style.display = user.verified ? 'inline' : 'none';
+            // Fetch FRESH data for Chat Header Blue Tick
+            const freshUserSnap = await get(ref(db, 'users/' + user.uid));
+            if(freshUserSnap.exists()) {
+                selectedUser = freshUserSnap.val();
+                LS.set(`user_cache_${user.uid}`, selectedUser);
+                const localContacts = LS.get('my_contacts');
+                if(localContacts) {
+                    const updatedContacts = localContacts.map(c => c.uid === user.uid ? selectedUser : c);
+                    LS.set('my_contacts', updatedContacts);
+                    renderContacts(updatedContacts);
+                }
+            }
+
+            els.currentChatName.innerText = selectedUser.username;
+            els.currentChatAvatar.src = selectedUser.photoURL;
+            
+            if(selectedUser.verified) {
+                els.chatBlueTick.style.display = 'inline';
+            } else {
+                els.chatBlueTick.style.display = 'none';
+            }
+
             els.chatPlaceholder.style.display = 'none';
             els.activeChatInterface.style.display = 'flex';
             els.messagesContainer.innerHTML = '';
@@ -683,7 +730,6 @@
             const cid = [currentUser.uid, user.uid].sort().join('_');
             selectedChatId = cid;
 
-            // 2. RENDER FROM LOCAL STORAGE ONLY (Initially)
             const localMsgs = LS.getMsgs(cid);
             localMsgs.forEach(m => renderMsg(m));
             renderedMsgTimestamps = new Set(localMsgs.map(m => m.timestamp));
@@ -762,24 +808,21 @@
                 els.reportReason.value = '';
             };
 
-            // 3. REALTIME LISTENER
             if(!isBlocked && !theirBlockSnap.exists()) {
                 const chatRef = ref(db, 'chats/'+cid);
                 activeChatListener = onChildAdded(chatRef, (snapshot) => {
                     const msg = snapshot.val();
                     const msgKey = snapshot.key;
 
-                    // CHECK DUPLICATES
                     if(renderedMsgTimestamps.has(msg.timestamp)) return;
 
-                    // Save to LS immediately
                     LS.saveMsg(cid, msg);
                     renderedMsgTimestamps.add(msg.timestamp);
                     
                     renderMsg(msg);
                     scrollToBottom();
 
-                    // DELETE FROM FIREBASE AFTER 5 SECONDS (DB Saver)
+                    // Auto Delete from Firebase after 5s (Transport only)
                     setTimeout(() => {
                         remove(ref(db, `chats/${cid}/${msgKey}`));
                     }, 5000);
@@ -808,20 +851,25 @@
 
             const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
             
-            // 1. Save to LocalStorage
             LS.saveMsg(selectedChatId, msg);
             renderedMsgTimestamps.add(msg.timestamp);
             
-            // 2. Render UI
             renderMsg(msg);
             scrollToBottom();
             els.messageInput.value = '';
 
-            // 3. Send to Firebase for Transport
             const msgRef = push(ref(db, 'chats/'+selectedChatId));
             await set(msgRef, msg);
 
-            // 4. Delete from Firebase after 5s
+            // --- SEND NOTIFICATION (New Logic) ---
+            // Send a notification node to the receiver
+            await push(ref(db, `notifications/${selectedUser.uid}`), {
+                from: currentUserData.username,
+                msg: txt,
+                type: 'message',
+                timestamp: Date.now()
+            });
+
             setTimeout(() => {
                 remove(msgRef);
             }, 5000);
@@ -830,7 +878,6 @@
         els.messageInput.onkeypress = e => { if(e.key==='Enter') els.sendBtn.click(); };
         els.mobileBackBtn.onclick = () => { els.chatArea.classList.remove('active'); els.sidebar.classList.remove('hidden-mobile'); };
 
-        // --- Three Dots Menu ---
         els.chatMenuBtn.onclick = (e) => {
             e.stopPropagation();
             els.chatMenuDropdown.style.display = els.chatMenuDropdown.style.display === 'flex' ? 'none' : 'flex';
@@ -845,9 +892,7 @@
             }
         };
 
-        // --- VERIFY BUTTON LOGIC (FIXED) ---
         els.verifyBtn.onclick = () => {
-            // FIX 2: Prevent Verified users from requesting again
             if(currentUserData.verified) {
                 showToast("You are already verified!", 'success');
                 return;
@@ -856,7 +901,6 @@
         };
 
         els.submitVerifyBtn.onclick = async () => {
-            // FIX 3: Double check DB before sending request
             const snap = await get(ref(db, `users/${currentUser.uid}`));
             if(snap.exists() && snap.val().verified) {
                 showToast("You are already verified.", 'error');
@@ -874,14 +918,12 @@
             showToast("Sent", 'success'); 
             els.verifyModal.classList.remove('open');
             
-            // Clear inputs
             els.verifyProfession.value = '';
             els.verifyReason.value = '';
         };
 
         // --- ADMIN PANEL ---
         function loadAdminPanel() {
-            // Tab Logic
             document.querySelectorAll('.admin-tab').forEach(tab => {
                 tab.onclick = () => {
                     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
@@ -891,13 +933,11 @@
                 }
             });
 
-            // Verification Requests
             onValue(ref(db, 'verificationRequests'), s => {
                 els.adminRequestsList.innerHTML = '';
                 if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
                 s.forEach(c => {
                     const req = c.val();
-                    // Only show PENDING requests
                     if(req.status === 'pending') {
                         const uid = c.key;
                         get(ref(db, 'users/'+uid)).then(uSnap => {
@@ -916,7 +956,6 @@
                 });
             });
 
-            // Ban Appeals
             onValue(ref(db, 'banAppeals'), s => {
                 els.adminAppealsList.innerHTML = '';
                 if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
@@ -941,7 +980,6 @@
                 });
             });
 
-            // User Reports
             onValue(ref(db, 'reports'), s => {
                 els.adminReportsList.innerHTML = '';
                 if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
@@ -975,7 +1013,6 @@
             showToast("Accepted", 'success');
         };
         window.rejectAdmin = async (uid) => {
-            // We delete the request so they can try again later if they want
             await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
             await remove(ref(db, 'verificationRequests/'+uid));
             sendSystemMsg(uid, "Sorry, your request was rejected.");
@@ -1009,7 +1046,7 @@
             await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
             const cid = [currentUser.uid, uid].sort().join('_');
             const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
-            LS.saveMsg(cid, msg); // Admin saves locally
+            LS.saveMsg(cid, msg);
             const refMsg = push(ref(db, 'chats/'+cid));
             await set(refMsg, msg);
         };
@@ -1062,11 +1099,8 @@
 
         els.saveEditProfileBtn.onclick = async () => {
             if(editBase64) {
-                // Update LS
                 currentUserData.photoURL = editBase64;
                 LS.set('my_profile', currentUserData);
-                
-                // Update Firebase
                 await update(ref(db, 'users/'+currentUser.uid), { photoURL: editBase64 });
                 els.myAvatar.src = editBase64;
                 els.editProfileModal.classList.remove('open');
@@ -1082,7 +1116,6 @@
             const un = els.newUsernameInput.value.trim().toLowerCase();
             const s = await get(ref(db, 'usernames/'+un));
             if(s.exists()) {
-                // Update LS for contacts
                 const uid = s.val();
                 const uSnap = await get(ref(db, 'users/'+uid));
                 if(uSnap.exists()) {
@@ -1100,10 +1133,8 @@
             } else showToast("Not found", 'error');
         };
 
-        // --- ADMIN BUTTON CLICK EVENT ---
         els.adminPanelBtn.onclick = () => { els.adminModal.classList.add('open'); }
 
-        // --- CLOSE MODALS ---
         document.querySelectorAll('.modal, .close-modal').forEach(el => {
             el.onclick = (e) => {
                 if(e.target === el || e.target.classList.contains('close-modal')) el.classList.remove('open');
