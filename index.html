@@ -100,10 +100,20 @@
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
         .modal.open { display: flex; }
-        .modal-content { background: var(--white); padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; animation: popIn 0.3s; }
+        .modal-content { background: var(--white); padding: 2rem; border-radius: 12px; width: 90%; max-width: 450px; animation: popIn 0.3s; max-height: 90vh; overflow-y: auto; }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .modal-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center; }
         .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+
+        /* Receipt Styles */
+        .receipt-box {
+            background: #f9f9f9; border: 1px dashed #ccc; padding: 15px; border-radius: 8px; margin-top: 10px;
+        }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .receipt-label { font-weight: 600; color: #555; font-size: 0.9rem; }
+        .receipt-val { color: #111; font-size: 0.9rem; text-align: right; max-width: 60%; word-wrap: break-word; }
+        .receipt-img { width: 100%; border-radius: 6px; margin-top: 10px; border: 1px solid #ddd; }
+        .receipt-id { font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
 
         .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-height: 200px; overflow-y: auto; margin-top: 10px; }
         .emoji-item { cursor: pointer; font-size: 1.5rem; text-align: center; padding: 5px; border-radius: 5px; }
@@ -113,7 +123,7 @@
         .toast { background: #323232; color: white; padding: 12px 24px; border-radius: 4px; font-size: 0.9rem; animation: fadeInOut 3s forwards; display: flex; align-items: center; gap: 10px; pointer-events: auto; }
         .toast.error { background: #d32f2f; }
         .toast.success { background: #2e7d32; }
-        .toast.info { background: #0288d1; } /* Added for messages */
+        .toast.info { background: #0288d1; }
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
 
         #banned-overlay {
@@ -135,6 +145,7 @@
         .admin-tab.active { opacity: 1; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 600; }
         .admin-section { display: none; max-height: 300px; overflow-y: auto; }
         .admin-section.active { display: block; }
+        .admin-evidence-img { max-width: 150px; border-radius: 4px; margin-top: 5px; border: 1px solid #ccc; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -276,12 +287,29 @@
         </div>
     </div>
 
-    <!-- Report Modal -->
+    <!-- Report Modal (UPDATED with Image Upload) -->
     <div id="report-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Report User</h3><button class="close-modal">&times;</button></div>
             <textarea id="report-reason" class="input-field" rows="3" placeholder="Why are you reporting this user?" style="margin-bottom: 10px;"></textarea>
+            
+            <label style="font-size:0.9rem; font-weight:600; margin-bottom:5px; display:block;">Upload Screenshot (Evidence)</label>
+            <input type="file" id="report-evidence-input" class="input-field" accept="image/*">
+            <small style="color: #666; font-size: 0.8rem; display:block; margin-bottom:10px">Max size: 1MB.</small>
+            
             <button class="btn-primary" id="submit-report-btn" style="background: var(--danger);">Submit Report</button>
+        </div>
+    </div>
+
+    <!-- RECEIPT MODAL (Generic for Report & Verification) -->
+    <div id="receipt-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-receipt"></i> Confirmation Receipt</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div id="receipt-content"></div>
+            <button class="btn-primary" id="close-receipt-btn" style="margin-top: 20px;">Close</button>
         </div>
     </div>
 
@@ -375,6 +403,7 @@
         let activeChatListener = null;
         let setupBase64 = "";
         let editBase64 = "";
+        let reportEvidenceBase64 = ""; // New
         let renderedMsgTimestamps = new Set();
 
         const els = {
@@ -437,7 +466,11 @@
             appealReason: document.getElementById('appeal-reason'),
             reportModal: document.getElementById('report-modal'),
             reportReason: document.getElementById('report-reason'),
-            submitReportBtn: document.getElementById('submit-report-btn')
+            reportEvidenceInput: document.getElementById('report-evidence-input'),
+            submitReportBtn: document.getElementById('submit-report-btn'),
+            receiptModal: document.getElementById('receipt-modal'),
+            receiptContent: document.getElementById('receipt-content'),
+            closeReceiptBtn: document.getElementById('close-receipt-btn')
         };
 
         const showScreen = (id) => els.screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -460,7 +493,6 @@
                 if(!h.find(m => m.timestamp === msg.timestamp)) {
                     h.push(msg);
                     LS.set(k, h);
-                    // Also update contact list preview in LS
                     updateContactPreview(cid, msg);
                 }
             },
@@ -468,7 +500,6 @@
             clearChat: (cid) => LS.remove(`chat_${cid}`)
         };
 
-        // Helper to update contact list preview
         function updateContactPreview(cid, msg) {
             const contacts = LS.get('my_contacts') || [];
             const otherUid = cid.split('_').find(id => id !== currentUser.uid);
@@ -602,34 +633,26 @@
 
         // --- MAIN APP ---
         function initApp() {
-            // 1. Initial UI
             updateMyProfileUI(currentUserData);
 
-            // 2. Realtime Listener for MY profile (Blue Tick Fix)
             const myProfileRef = ref(db, 'users/' + currentUser.uid);
             onValue(myProfileRef, (snap) => {
                 if(snap.exists()) {
                     const data = snap.val();
-                    currentUserData = data; // Update Global State
-                    LS.set('my_profile', data); // Save to Storage (Permanent Save)
+                    currentUserData = data;
+                    LS.set('my_profile', data);
                     updateMyProfileUI(data);
                 }
             });
 
-            // 3. Global Notifications Listener (New Message Fix)
-            // Uses onChildAdded to only trigger for NEW notifications
             const notifRef = ref(db, 'notifications/' + currentUser.uid);
             onChildAdded(notifRef, (snapshot) => {
                 const notif = snapshot.val();
-                // Only show if from someone else
                 if(notif.from !== currentUserData.username) {
                     showToast(`New message arrived from ${notif.from}`, 'info');
                 }
-                // Optional: Remove notification after reading to keep list clean
-                // remove(snapshot.ref); 
             });
 
-            // Load Contacts
             const localContacts = LS.get('my_contacts');
             if(localContacts) renderContacts(localContacts);
 
@@ -701,7 +724,6 @@
 
             if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
             
-            // Fetch FRESH data for Chat Header Blue Tick
             const freshUserSnap = await get(ref(db, 'users/' + user.uid));
             if(freshUserSnap.exists()) {
                 selectedUser = freshUserSnap.val();
@@ -735,7 +757,6 @@
             renderedMsgTimestamps = new Set(localMsgs.map(m => m.timestamp));
             scrollToBottom();
 
-            // Block/Unblock Logic
             const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
             const isBlockedSnap = await get(blockedRef);
             const isBlocked = isBlockedSnap.exists();
@@ -768,7 +789,6 @@
                  els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
             }
 
-            // Status Listener
             const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
             const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
             
@@ -791,21 +811,10 @@
             });
 
             // Report Logic
-            els.reportUserBtn.onclick = () => { els.reportModal.classList.add('open'); };
-            els.submitReportBtn.onclick = async () => {
-                const reason = els.reportReason.value;
-                if(!reason) return showToast("Enter reason", 'error');
-                await push(ref(db, 'reports'), {
-                    reporter: currentUser.uid,
-                    reported: user.uid,
-                    username: user.username,
-                    reason: reason,
-                    status: 'pending',
-                    timestamp: Date.now()
-                });
-                showToast("Report Submitted", 'success');
-                els.reportModal.classList.remove('open');
+            els.reportUserBtn.onclick = () => { 
                 els.reportReason.value = '';
+                els.reportEvidenceInput.value = '';
+                els.reportModal.classList.add('open'); 
             };
 
             if(!isBlocked && !theirBlockSnap.exists()) {
@@ -822,7 +831,6 @@
                     renderMsg(msg);
                     scrollToBottom();
 
-                    // Auto Delete from Firebase after 5s (Transport only)
                     setTimeout(() => {
                         remove(ref(db, `chats/${cid}/${msgKey}`));
                     }, 5000);
@@ -861,8 +869,6 @@
             const msgRef = push(ref(db, 'chats/'+selectedChatId));
             await set(msgRef, msg);
 
-            // --- SEND NOTIFICATION (New Logic) ---
-            // Send a notification node to the receiver
             await push(ref(db, `notifications/${selectedUser.uid}`), {
                 from: currentUserData.username,
                 msg: txt,
@@ -892,6 +898,47 @@
             }
         };
 
+        // --- REPORT SUBMIT LOGIC (UPDATED) ---
+        els.submitReportBtn.onclick = async () => {
+            const reason = els.reportReason.value.trim();
+            const file = els.reportEvidenceInput.files[0];
+
+            if(!reason) return showToast("Enter reason", 'error');
+            
+            if(file) {
+                if(file.size > 1000000) { showToast("Screenshot too large! Max 1MB", 'error'); return; }
+                try {
+                    reportEvidenceBase64 = await fileToBase64(file);
+                } catch(err) {
+                    showToast("Error processing image", 'error');
+                    return;
+                }
+            } else {
+                reportEvidenceBase64 = null;
+            }
+
+            const reportData = {
+                reporter: currentUser.uid,
+                reporterName: currentUserData.username,
+                reported: selectedUser.uid,
+                username: selectedUser.username,
+                reason: reason,
+                evidence: reportEvidenceBase64,
+                status: 'pending',
+                timestamp: Date.now()
+            };
+
+            const repRef = await push(ref(db, 'reports'), reportData);
+            
+            // Show Receipt
+            showReceipt('report', repRef.key, reportData);
+
+            els.reportModal.classList.remove('open');
+            els.reportReason.value = '';
+            els.reportEvidenceInput.value = '';
+        };
+
+        // --- VERIFICATION SUBMIT LOGIC (UPDATED) ---
         els.verifyBtn.onclick = () => {
             if(currentUserData.verified) {
                 showToast("You are already verified!", 'success');
@@ -913,14 +960,49 @@
             
             if(!profession || !reason) return showToast("Fill all fields", 'error');
 
-            const data = { profession, reason, status: 'pending' };
-            await set(ref(db, 'verificationRequests/'+currentUser.uid), data);
-            showToast("Sent", 'success'); 
+            const reqData = { profession, reason, status: 'pending', username: currentUserData.username, uid: currentUser.uid };
+            const reqRef = await push(ref(db, 'verificationRequests'), reqData);
+
+            // Show Receipt
+            showReceipt('verify', reqRef.key, reqData);
+
             els.verifyModal.classList.remove('open');
             
             els.verifyProfession.value = '';
             els.verifyReason.value = '';
         };
+
+        // --- RECEIPT UI LOGIC ---
+        function showReceipt(type, id, data) {
+            els.receiptContent.innerHTML = '';
+            const box = document.createElement('div');
+            box.className = 'receipt-box';
+
+            const date = new Date(data.timestamp).toLocaleString();
+            
+            if(type === 'report') {
+                box.innerHTML = `
+                    <div class="receipt-row"><span class="receipt-label">Type:</span> <span class="receipt-val">User Report</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Ticket ID:</span> <span class="receipt-val receipt-id">${id}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Reported User:</span> <span class="receipt-val">${data.username}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Reason:</span> <span class="receipt-val">${data.reason}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Timestamp:</span> <span class="receipt-val">${date}</span></div>
+                    ${data.evidence ? `<div class="receipt-row"><span class="receipt-label">Evidence:</span></div><img src="${data.evidence}" class="receipt-img">` : ''}
+                `;
+            } else {
+                box.innerHTML = `
+                    <div class="receipt-row"><span class="receipt-label">Type:</span> <span class="receipt-val">Verification Request</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Request ID:</span> <span class="receipt-val receipt-id">${id}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Profession:</span> <span class="receipt-val">${data.profession}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Reason:</span> <span class="receipt-val">${data.reason}</span></div>
+                    <div class="receipt-row"><span class="receipt-label">Timestamp:</span> <span class="receipt-val">${date}</span></div>
+                `;
+            }
+            els.receiptContent.appendChild(box);
+            els.receiptModal.classList.add('open');
+        }
+
+        els.closeReceiptBtn.onclick = () => { els.receiptModal.classList.remove('open'); };
 
         // --- ADMIN PANEL ---
         function loadAdminPanel() {
@@ -940,18 +1022,13 @@
                     const req = c.val();
                     if(req.status === 'pending') {
                         const uid = c.key;
-                        get(ref(db, 'users/'+uid)).then(uSnap => {
-                            if(uSnap.exists()) {
-                                const u = uSnap.val();
-                                const item = document.createElement('div');
-                                item.className = 'req-item';
-                                item.innerHTML = `<b>${u.username}</b><br><small>${req.reason}</small><br>
-                                    <button class="btn-small btn-acc" onclick="window.acceptAdmin('${uid}')">Acc</button>
-                                    <button class="btn-small btn-rej" onclick="window.rejectAdmin('${uid}')">Rej</button>
-                                `;
-                                els.adminRequestsList.appendChild(item);
-                            }
-                        });
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.innerHTML = `<b>${req.username}</b><br><small>Profession: ${req.profession}</small><br><small>${req.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAdmin('${uid}')">Acc</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAdmin('${uid}')">Rej</button>
+                        `;
+                        els.adminRequestsList.appendChild(item);
                     }
                 });
             });
@@ -963,23 +1040,19 @@
                     const appeal = c.val();
                     if(appeal.status === 'pending') {
                         const uid = c.key;
-                        get(ref(db, 'users/'+uid)).then(uSnap => {
-                            if(uSnap.exists()) {
-                                const u = uSnap.val();
-                                const item = document.createElement('div');
-                                item.className = 'req-item';
-                                item.style.borderColor = '#ef5350';
-                                item.innerHTML = `<b style="color:#ef5350">${u.username} (Banned)</b><br><small>${appeal.reason}</small><br>
-                                    <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
-                                    <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
-                                `;
-                                els.adminAppealsList.appendChild(item);
-                            }
-                        });
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ef5350';
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
+                        `;
+                        els.adminAppealsList.appendChild(item);
                     }
                 });
             });
 
+            // ADMIN REPORTS (ULTRA UPGRADED)
             onValue(ref(db, 'reports'), s => {
                 els.adminReportsList.innerHTML = '';
                 if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
@@ -990,10 +1063,23 @@
                         const item = document.createElement('div');
                         item.className = 'req-item';
                         item.style.borderColor = '#ff9800';
-                        item.innerHTML = `<b style="color:#ff9800">${report.username}</b> reported<br>
-                            <small>${report.reason}</small><br>
-                            <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
-                            <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}')">Reject</button>
+                        
+                        let evidenceHtml = '';
+                        if(report.evidence) {
+                            evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div>`;
+                        }
+
+                        item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#ff9800">${report.reporterName}</b> reported 
+                                <b>${report.username}</b>
+                            </div>
+                            <small>Reason: ${report.reason}</small>
+                            ${evidenceHtml}
+                            <div style="margin-top:8px;">
+                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
+                                <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}')">Reject</button>
+                            </div>
                         `;
                         els.adminReportsList.appendChild(item);
                     }
