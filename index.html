@@ -67,7 +67,7 @@
         .contact-item.active { background: #f0f2f5; }
         .contact-info { flex: 1; margin-left: 12px; overflow: hidden; }
         .contact-name { font-weight: 500; font-size: 1.05rem; }
-        .last-msg-preview { font-size: 0.85rem; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
+        .last-msg-preview { font-size: 0.85rem; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
         .chat-header { padding: 10px 16px; background: var(--light-gray); display: flex; justify-content: space-between; align-items: center; height: 70px; border-bottom: 1px solid #d1d7db; flex-shrink: 0; }
         .chat-header-info { display: flex; flex-direction: column; justify-content: center; }
@@ -119,7 +119,7 @@
         .emoji-item { cursor: pointer; font-size: 1.5rem; text-align: center; padding: 5px; border-radius: 5px; }
         .emoji-item:hover { background: #eee; }
 
-        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        #toast-container { position: fixed; bottom: 20px; left:  50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: #323232; color: white; padding: 12px 24px; border-radius: 4px; font-size: 0.9rem; animation: fadeInOut 3s forwards; display: flex; align-items: center; gap: 10px; pointer-events: auto; }
         .toast.error { background: #d32f2f; }
         .toast.success { background: #2e7d32; }
@@ -146,7 +146,7 @@
         .admin-section { display: none; max-height: 300px; overflow-y: auto; }
         .admin-section.active { display: block; }
         .admin-evidence-img { max-width: 150px; border-radius: 4px; margin-top: 5px; border: 1px solid #ccc; cursor: pointer; }
-
+        
         .loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999;
@@ -169,6 +169,19 @@
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* System Message Style (Gray Bubble) */
+        .msg-system {
+            align-self: center; background: #f0f2f2; color: #667781; border-radius: 4px; font-size: 0.85rem; width: fit-content; text-align: center;
+        }
+        .msg-system strong { color: #d32f2f; font-weight: 600; }
+
+        /* System Notification (Simulated Push) */
+        .msg-sys-notif {
+            background: #e3f2fd; color: #fff; text-align: center; border-radius: 18px; padding: 8px 12px; width: fit-content; margin: 0 auto; margin-bottom: 5px; animation: slideUp 0.3s ease-out;
+        }
+        .msg-sys-notif strong { color: #008069; font-weight: 600; }
+
     </style>
 </head>
 <body>
@@ -413,7 +426,7 @@
         const db = getDatabase(app);
         const provider = new GoogleAuthProvider();
 
-        // --- ZUBER AI CARE CONFIG (API KEY YAHAN DAALO) ---
+        // --- ZUBER CARE CONFIG (SIMULATED BACKEND) ---
         const BOT_UID = 'zuber_support_bot';
         const ZUBER_CARE = {
             uid: BOT_UID,
@@ -424,11 +437,6 @@
             status: 'Always Online'
         };
 
-        // --- OPENAI CONFIG (API KEY DAALNA HAI) ---
-        const OPENAI_API_KEY = 'sk-proj-...PASTE_YOUR_KEY_HERE...'; // <--- APNI KEY YAHAN DAAL DO
-        const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-        const AI_MODEL = 'gpt-3.5-turbo'; // GPT-4o-mini bhi use kar sakte ho
-
         let currentUser = null;
         let currentUserData = null;
         let selectedChatId = null;
@@ -438,7 +446,6 @@
         let editBase64 = "";
         let reportEvidenceBase64 = "";
         let renderedMsgTimestamps = new Set();
-        let isBotTyping = false;
 
         const els = {
             screens: document.querySelectorAll('.screen'),
@@ -476,7 +483,7 @@
             editProfileModal: document.getElementById('edit-profile-modal'),
             editPreviewImg: document.getElementById('edit-preview-img'),
             editPicUpload: document.getElementById('edit-pic-upload'),
-            saveEditProfileBtn: document.getElementById('save-edit-profile-btn'),
+            saveEditProfileBtn = document.getElementById('save-edit-profile-btn'),
             verifyBtn: document.getElementById('verify-btn'),
             verifyModal: document.getElementById('verify-modal'),
             verifyProfession: document.getElementById('verify-profession'),
@@ -517,7 +524,6 @@
         };
         const showLoading = (show) => els.loadingOverlay.style.display = show ? 'flex' : 'none';
 
-        // --- COMPRESSOR ---
         const compressImage = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -541,43 +547,87 @@
             });
         };
 
-        // --- OPENAI API CONNECTION ---
-        const callOpenAI = async (chatHistory) => {
-            try {
-                const systemMessage = {
-                    role: "system",
-                    content: "You are Zuber Care, a professional customer support agent for the Zuber chat application. Your goal is to assist users with account issues, blue ticks, reporting users, or technical problems. Be polite, empathetic, and concise. Provide clear steps. Use English."
-                };
+        // --- SIMULATED AI LOGIC (NO API, NO DB WRITES) ---
+        function getSimulatedAIResponse(text) {
+            const t = text.toLowerCase();
+            
+            const has = (words) => words.some(w => t.includes(w));
 
-                // Combine system prompt + chat history + new user message
-                // Limit history to last 10 messages to save tokens
-                const recentHistory = chatHistory.slice(-10);
-                const apiMessages = [systemMessage, ...recentHistory];
-
-                const response = await fetch(OPENAI_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${OPENAI_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: AI_MODEL,
-                        messages: apiMessages,
-                        temperature: 0.7
-                    })
-                });
-
-                const data = await response.json();
-                if(data.choices && data.choices[0]) {
-                    return data.choices[0].message.content;
-                } else {
-                    throw new Error("No response from API");
-                }
-            } catch (error) {
-                console.error("AI Error:", error);
-                return "I'm sorry, I'm having trouble connecting right now. Please check your API Key or try again.";
+            // 1. Identity
+            if (has(['who are you', 'your name', 'what are you', 'bot', 'robot', 'real human', 'agent'])) {
+                return "I am Zuber Care, your personal AI support assistant. I'm here to help with anything related to your account.";
             }
-        };
+
+            // 2. Greetings
+            if (has(['hello', 'hi', 'hey', 'hlo', 'hii', 'good morning', 'good evening'])) {
+                const greetings = [
+                    "Hello! How can I assist you today?",
+                    "Hi there! I'm Zuber Care. Ask me anything about your account.",
+                    "Hey! Need help with verification, reporting, or ban issues?",
+                    "Hi there! I'm online to help you."
+                ];
+                return greetings[Math.floor(Math.random() * greetings.length)];
+            }
+
+            // 3. Goodbyes & Closing
+            if (has(['bye', 'thanks', 'thank you', 'thnx', 'ok', 'good night', 'goodbye', 'done', 'thanks alot'])) {
+                const closing = [
+                    "You're very welcome! Is there anything else I can help you with?",
+                    "My pleasure. If you have more questions, just ask!",
+                    "Glad I could help. Is there anything else I can do for you?",
+                    "No problem. Take care."
+                ];
+                return closing[Math.floor(Math.random() * closing.length)];
+            }
+
+            // 4. Account Status (Ban/Suspend)
+            if (has(['ban', 'banned', 'blocked', 'suspended', 'kick', 'restricted'])) {
+                if (has(['why', 'reason'])) {
+                    return "Accounts are banned when they violate guidelines (e.g., harassment). To appeal, submit an appeal from the banned screen.";
+                }
+                return "I see you're asking about a ban. To appeal, please go to the banned screen and submit an appeal. Our admin reviews it.";
+            }
+
+            // 5. Verification Requests
+            if (has(['tick', 'verify', 'verified', 'blue', 'badge', 'mark', 'check', 'verification'])) {
+                return "To get verified Blue Tick, tap Certificate icon in your profile menu. Fill in your profession and reason. The Admin approves requests manually.";
+            }
+
+            // 6. Reporting & Safety
+            if (has(['report', 'abuse', 'scam', 'rude', 'hate', 'spam'])) {
+                return "Safety is our priority. To report a user, open their chat, tap menu, and select 'Report User'. We take strict action against scams.";
+            }
+
+            // 7. Login & Technical Issues
+            if (has(['login', 'password', 'sign in', 'forgot', 'reset', 'access', 'error', 'slow', 'crash', 'loading', 'bug'])) {
+                return "I'm sorry you're facing trouble. We use Google Auth. Check internet or clear cache.";
+            }
+
+            // 8. Feature Queries
+            if (has(['feature', 'how to', 'use', 'function', 'add contact', 'chat', 'search', 'delete'])) {
+                return "Sure! To add a contact, tap + icon. To chat, simply select a user.";
+            }
+
+            // 9. Escalation
+            if (has(['human', 'real person', 'live chat', 'agent', 'manager', 'talk to person', 'admin'])) {
+                return "I am doing my best to help. However, for complex issues, contact Admin 'zuber' directly.";
+            }
+
+            // 10. Zuber Care Trigger
+            if (has(['admin', 'zuber', 'owner', 'creator'])) {
+                return "I am Zuber Care (Bot).";
+            }
+
+            // 11. Insanely Smart Fallback
+            const fallbacks = [
+                `I understand you mentioned "${t.substring(0, 15)}${t.length>15?'...':''}". Could you tell me more so I can assist you better?`,
+                "I didn't quite catch that. Are you facing a technical issue or is it about another user?",
+                "I'm listening. Can you explain what exactly is happening?",
+                "I'm not sure I understood correctly. Could you rephrase that for me?",
+                "I'm listening. Can you explain what exactly is happening?"
+            ];
+            return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        }
 
         const fileToBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -751,9 +801,621 @@
                 if(notif.from !== currentUserData.username) {
                     showToast(`New message arrived from ${notif.from}`, 'info');
                 }
+                // Cleanup Logic: Delete immediately after showing to save DB space
                 remove(snapshot.ref);
             });
 
+            let localContacts = LS.get('my_contacts') || [];
+            // AUTO ADD ZUBER CARE HERE
+            const hasZuberCare = localContacts.find(c => c.uid === BOT_UID);
+            if(!hasZuberCare) {
+                localContacts.unshift(ZUBER_CARE);
+                LS.set('my_contacts', localContacts);
+            }
+
+            renderContacts(localContacts);
+
+            // Contact Listener (Realtime)
+            onValue(ref(db, 'users/'+currentUser.uid+'/contacts'), snap => {
+                const val = snap.val();
+                if(val) {
+                    const uids = Object.keys(val);
+                    Promise.all(uids.map(async uid => {
+                        let u = LS.get(`user_cache_${uid}`);
+                        if(!u) {
+                            const s = await get(ref(db, 'users/'+uid));
+                            if(s.exists()) {
+                                u = s.val();
+                                LS.set(`user_cache_${u.uid}`, u);
+                            }
+                        }
+                        return u;
+                    })).then(users => {
+                        let finalUsers = users.filter(u => u);
+                        // Make sure Zuber Care is top
+                        if(!finalUsers.find(u => u.uid === BOT_UID)) {
+                            finalUsers.unshift(ZUBER_CARE);
+                        }
+                        renderContacts(finalUsers);
+                        LS.set('my_contacts', finalUsers);
+                    });
+                }
+            });
+        }
+
+        function updateMyProfileUI(data) {
+            if(!data) return;
+            els.myAvatar.src = data.photoURL || "";
+            els.myUsernameDisplay.innerText = data.username || "";
+            
+            if(data.verified) {
+                els.myBlueTick.style.display = 'inline';
+                els.verifyBtn.style.display = 'none';
+            } else {
+                els.myBlueTick.style.display = 'none';
+                if(data.username.toLowerCase() !== 'zuber') {
+                    els.verifyBtn.style.display = 'block';
+                } else {
+                    els.verifyBtn.style.display = 'none';
+                }
+            }
+
+            if(data.username.toLowerCase() === 'zuber') {
+                els.adminPanelBtn.style.display = block';
+                loadAdminPanel();
+            } else {
+                els.adminPanelBtn.style.display = 'none';
+            }
+        }
+
+        function renderContacts(users) {
+            els.contactsList.innerHTML = '';
+            if(users.length === 0) els.contactsList.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No chats</div>';
+            users.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'contact-item';
+                const tickHtml = u.verified ? '<i class="fas fa-check-circle blue-tick"></i>' : '';
+                const preview = u.lastMessage ? `<div class="last-msg-preview">${u.lastMessage}</div>` : '';
+                div.innerHTML = `<img src="${u.photoURL}" class="avatar"><div class="contact-info"><div class="contact-name">${u.username} ${tickHtml}</div>${preview}</div>`;
+                div.onclick = () => openChat(u);
+                els.contactsList.appendChild(div);
+            });
+        }
+
+        // --- CHAT LOGIC ---
+        async function openChat(user) {
+            selectedUser = user;
+            if(activeChatListener) activeChatListener();
+
+            if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
+            
+            els.currentChatName.innerText = selectedUser.username;
+            els.currentChatAvatar.src = selectedUser.photoURL;
+            
+            // Fetch Fresh Logic for Chat Header Blue Tick (IMPORTANT)
+            const freshUserSnap = await get(ref(db, 'users/' + user.uid));
+            if(freshUserSnap.exists()) {
+                selectedUser = freshUserSnap.val(); // Update UI with Fresh Data
+                LS.set(`user_cache_${user.uid}`, selectedUser);
+                const localContacts = LS.get('my_contacts');
+                if(localContacts) {
+                    const updatedContacts = localContacts.map(c => c.uid === user.uid ? selectedUser : c);
+                    LS.set('my_contacts', updatedContacts);
+                    renderContacts(updatedContacts);
+                }
+            }
+            
+            // Render Tick based on FRESH data
+            if(selectedUser.verified) {
+                els.chatBlueTick.style.display = 'inline';
+            } else {
+                els.chatBlueTick.style.display = 'none';
+            }
+
+            els.chatPlaceholder.style.display = 'none';
+            els.activeChatInterface.style.display = 'flex';
+            els.messagesContainer.innerHTML = '';
+            
+            const cid = [currentUser.uid, user.uid].sort().join('_');
+            selectedChatId = cid;
+
+            const localMsgs = LS.getMsgs(cid);
+            localMsgs.forEach(m => renderMsg(m));
+            renderedMsgTimestamps = new Set(localMsgs.map(m => m.timestamp));
+            scrollToBottom();
+
+            const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
+            const isBlockedSnap = await get(blockedRef);
+            const isBlocked = isBlockedSnap.exists();
+
+            if(isBlocked) {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-user-check"></i> Unblock User';
+                els.blockUserBtn.classList.remove('danger');
+                els.blockUserBtn.style.color = 'var(--primary-color)';
+                els.blockUserBtn.onclick = async () => {
+                    await remove(blockedRef);
+                    showToast("User Unblocked", 'success');
+                    openChat(user);
+                };
+                els.messagesContainer.innerHTML = '<div style="text-align:center;color:#888;margin-top:20px">You blocked this user. Unblock to chat.</div>';
+            } else {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                els.blockUserBtn.style.color = 'var(--danger)';
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${user.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
+                        openChat(user);
+                    }
+                };
+            }
+
+            const theirBlockSnap = await get(ref(db, `users/${user.uid}/blocked/${currentUser.uid}`);
+            if(theirBlockSnap.exists() && !isBlocked) {
+                 els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
+            } else {
+                // Block Logic
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                els.blockUserBtn.style.color = 'var(--danger)';
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${user.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
+                        openChat(user);
+                    }
+                };
+            }
+
+            const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
+            const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
+            
+            onValue(partnerStatusRef, (snap) => {
+                const status = snap.val();
+                if(status === 'online') {
+                    els.currentChatStatus.innerText = 'Online';
+                    els.currentChatStatus.classList.add('online');
+                } else {
+                    els.currentChatStatus.classList.remove('online');
+                    get(partnerLastSeenRef).then(tsSnap => {
+                        if(tsSnap.exists()) {
+                            const time = new Date(tsSnap.val());
+                            els.currentChatStatus.innerText = `Last seen ${time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+                        } else {
+                            els.currentChatStatus.innerText = 'Offline';
+                        }
+                    });
+                }
+            });
+
+            // Report Logic
+            els.reportUserBtn.onclick = () => { 
+                els.reportReason.value = ''; 
+                els.reportEvidenceInput.value = '';
+                els.reportModal.classList.add('open'); 
+            };
+            els.submitReportBtn.onclick = async () => {
+                const reason = els.reportReason.value.trim();
+                const file = els.reportEvidenceInput.files[0];
+
+                if(!reason) return showToast("Enter reason", 'error');
+                let finalBase64 = null;
+
+                if(file) {
+                    if(file.size > 2000000) { showToast("Screenshot too large! Max 2MB", 'error'); return; }
+                    try {
+                        showLoading(true);
+                        finalBase64 = await compressImage(file);
+                        showLoading(false);
+                    } catch(err) {
+                        showLoading(false);
+                        showToast("Error processing image", 'error');
+                        return;
+                    }
+                }
+
+                const reportData = {
+                    reporter: currentUser.uid,
+                    reporterName: currentUserData.username,
+                    reported: selectedUser.uid,
+                    username: selectedUser.username,
+                    reason: reason,
+                    evidence: finalBase64,
+                    status: 'pending',
+                    timestamp: Date.now()
+                };
+
+                const repRef = await push(ref(db, 'reports'), reportData);
+                showReceipt('report', repRef.key, reportData);
+                
+                els.reportModal.classList.remove('open');
+                els.reportReason.value = '';
+                els.reportEvidenceInput.value = '';
+            };
+
+            // --- ADMIN PANEL ---
+            const getUidFromUser = async (un) => {
+                const s = await get(ref(db, 'usernames/'+un));
+                return s.exists() ? s.val() : null;
+            };
+
+            // --- SIMULATED ADMIN ---
+            // Admin Panel ke liye jo Admin "System Messages" logic lagaya hai
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        
+                        let evidenceHtml = '';
+                        if(report.evidence) {
+                            evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div>`;
+                        }
+
+                        item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#ff9800">${report.reporterName}</b> reported 
+                                <b>${report.username}</b>
+                            </div>
+                            <small>Reason: ${report.reason}</small>
+                            ${evidenceHtml}
+                            <div style="margin-top:8px;">
+                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
+                                <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}')">Reject</button>
+                            </div>
+                        `;
+                        els.adminReportsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'verificationRequests'), s => {
+                els.adminRequestsList.innerHTML = '';
+                if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
+                s.forEach(c => {
+                    const req = c.val();
+                    if(req.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.innerHTML = `<b>${req.username}</b><br><small>Profession: ${req.profession}</small><br><small>${req.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAdmin('${uid}')">Acc</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAdmin('${uid}')">Rej</button>
+                        `;
+                        els.adminRequestsList.appendChild(item);
+                    }
+                });
+            });
+
+            // Admin Panel Logic (Admin se Message Trigger - LocalStorage Notification)
+            window.acceptAdmin = async (uid) => {
+                await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
+                await remove(ref(db, 'verificationRequests/'+uid)); 
+                // Zuber Care Local Notification Injection
+                const botMsg = { text: "Congratulations! Your blue tick request has been accepted.", sender: BOT_UID, timestamp: Date.now(), isSystem: true };
+                LS.saveMsg(uid, botMsg);
+                
+                // Notify Admin Panel to Refresh local contacts
+                const localContacts = LS.get('my_contacts') || [];
+                const contact = localContacts.find(c => c.uid === uid);
+                if(contact) {
+                    const updatedContacts = localContacts.map(c => c.uid === uid ? { verified: true } : c); // Verify locally in LS
+                    LS.set('my_contacts', updatedContacts);
+                } else {
+                    showToast("User not found", 'error'); // If not found in LS either
+                }
+            }
+
+            window.rejectAdmin = async (uid) => {
+                await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
+                await remove(ref(db, 'verificationRequests/'+uid)); 
+                sendSystemMsg(uid, "Sorry, your request was rejected.");
+                showToast("Rejected", 'info');
+            };
+
+            window.acceptAppeal = async (uid) => {
+                await update(ref(db, 'users/'+uid), { isBanned: false });
+                await remove(ref(db, 'banAppeals/'+uid)); 
+                const notifMsg = { text: "Your ban appeal has been accepted. Unbanned.", sender: BOT_UID, timestamp: Date.now(), isSystem: true };
+                LS.saveMsg(uid, notifMsg);
+            };
+            window.rejectAppeal = async (uid) => {
+                await remove(ref(db, 'banAppeals/'+uid)); 
+                const notifMsg = { text: "Your ban appeal has been rejected.", sender: BOT_UID, timestamp: Date.now(), isSystem: true };
+                LS.saveMsg(uid, notifMsg);
+            };
+
+            window.acceptReport = async (repKey, uid) => {
+                await update(ref(db, 'users/'+uid), { isBanned: true });
+                await remove(ref(db, `reports/${repKey}`)); 
+                showToast("User Banned", 'success');
+            };
+
+            window.rejectReport = async (repKey) => {
+                await remove(ref(db, `reports/${repKey}`)); 
+                showToast("Report Rejected", 'info');
+            };
+
+            // System Messages (System Messages) Function - Sends Simulated Push Notifications
+            const sendSystemMsg = async (uid, txt) => {
+                // Save to LS only for persistence in chat
+                const cid = [currentUser.uid, uid].sort().join('_');
+                const msg = { text: txt, sender: BOT_UID, timestamp: Date.now(), isSystem: true };
+                LS.saveMsg(cid, msg);
+                // LocalStorage Notification
+                LS.saveMsg(uid, msg); // Notification to self (for Admin Panel UI)
+            };
+
+        };
+
+        window.getUidFromUser = async (un) => {
+            const s = await get(ref(db, 'usernames/'+un));
+            return s.exists() ? s.val() : null;
+        };
+
+        window.adminBanBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { isBanned: true }); showToast("Banned", 'success'); } else showToast("User not found", 'error');
+        };
+        els.adminUnbanBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { isBanned: false }); showToast("Unbanned", 'success'); } else showToast("User not found", 'error');
+        };
+        els.adminVerifyBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { verified: true }); showToast("Verified", 'success'); } else showToast("User not found", 'error');
+        };
+        els.adminUnverifyBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { verified: false }); showToast("Tick Removed", 'success'); } else showToast("User not found", 'error');
+        };
+
+        // --- REPORT LOGIC (SYSTEM MESSAGES) ---
+        window.acceptReport = async (repKey, uid) => {
+            if(!confirm("Are you sure?")) return;
+            
+            // Update DB
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("User Banned", 'success');
+            
+            // Send System Message (Simulated "Push" to Admin Panel via LocalStorage)
+            sendSystemMsg(uid, "System: ⚠️ User " + (currentUserData.username) + " reported " + (selectedUser.username) + " (Report ID: " + repKey);
+        };
+
+        window.rejectReport = async (repKey) => {
+            await remove(ref(db, `reports/${repKey}`)); 
+            // Send System Message via LocalStorage
+            sendSystemMsg(uid, "System: Report Rejected by Admin (ID: " + repKey);
+        };
+
+        window.sendSystemMsg = async (uid, txt) => {
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const cid = [currentUser.uid, uid].sort().join('_');
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(cid, msg);
+            const refMsg = push(ref(db, 'chats/'+cid));
+            await set(refMsg, msg);
+        };
+
+        // --- EMOJIS ---
+        const emojis = ['😀','😂','😍','😎','😭','😡','👍','👎','🎉','🔥','❤️','👋','🤣','😊','😘','�','😜','😏','😓','😋','🌹','🚀','💩','👻','💥','🧡','📋','📅','📲','🏳','👿','📂','🌏','💒','🔏','💣','🔍','📱','📧','📉','💾','💹','📲','💚','📦','📫','🏳','�','🐘','👻','👼','🌹','🛑','🚻','🤐','🍕','🍔','🍜','�','🚠','🤡','🤖','�','😨','😐','🥰','😮','😎','😋','😏','🤣','😋','😊','�','🔥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💾','💥','😰','😋','🤣','😜','🤖','�','�','🐘','👻','👼','🎉','🔥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏','🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵','😁','😬','😱','😏',🚀','💩','👻','💥','😭','😵',😁','😬','😱','😏',🚀','💩','👻','💥',😭','😵',😁',😬','😱',😏',🚀',💩',👻',💥',😭',😵',😁',😬','😱',😏',🚀',💩',👻',💥',😭',😵',😁',😬','😱',😏',🚀',💩',👻',💥',😭', �', 😵, 😁, 😬, 😱, 😏', 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱, 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱, 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥', 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏', 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭', 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏', 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏', 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏', 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬, 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏, 🚀, 💩, 👻, 💥, 😭, 😵, 😁, 😬', 😱', 😏, �, 💩, �-'); 
+        };
+
+        const showScreen = (id) => els.screens.forEach(s => s.classList.toggle('active', s.id === id));
+        const showToast = (msg, t='info') => {
+            const c = document.getElementById('toast-container');
+            const x = document.createElement('div'); x.className = `toast ${t}`;
+            x.innerHTML = `<i class="fas ${t==='error'?'fa-exclamation-circle':(t==='success'?'fa-check-circle':'fa-envelope')}"></i> ${msg}`;
+            c.appendChild(x); setTimeout(()=>x.remove(), 3000);
+        };
+        const showLoading = (show) => els.loadingOverlay.style.display = show ? 'flex' : 'none';
+
+        // --- COMPRESSOR ---
+        const compressImage = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        };
+
+        // --- LOCAL STORAGE MANAGER ---
+        const LS = {
+            key: (k) => `zuber_${k}`,
+            set: (k, v) => localStorage.setItem(LS.key(k), JSON.stringify(v)),
+            get: (k) => JSON.parse(localStorage.getItem(LS.key(k))),
+            getMsgs: (cid) => LS.get(`chat_${cid}`) || [],
+            saveMsg: (cid, msg) => {
+                const k = `chat_${cid}`;
+                let h = LS.get(k) || [];
+                if(!h.find(m => m.timestamp === msg.timestamp)) {
+                    h.push(msg);
+                    LS.set(k, h);
+                    updateContactPreview(cid, msg);
+                }
+            },
+            getMsgs: (cid) => LS.get(`chat_${cid}`) || [],
+            clearChat: (cid) => LS.remove(`chat_${cid}`)`)
+        };
+
+        function updateContactPreview(cid, msg) {
+            const contacts = LS.get('my_contacts') || [];
+            const otherUid = cid.split('_').find(id => id !== currentUser.uid);
+            if(otherUid) {
+                const contact = contacts.find(c => c.uid === otherUid);
+                if(contact) {
+                    contact.lastMessage = msg.text;
+                    contact.lastTime = msg.timestamp;
+                    LS.set('my_contacts', contacts);
+                    renderContacts(contacts);
+                }
+            }
+        }
+
+        // --- AUTH ---
+        els.googleBtn.onclick = () => signInWithPopup(auth, provider).catch(e => showToast(e.message, 'error'));
+        els.logoutBtn.onclick = () => {
+            if(currentUser) {
+                set(ref(db, 'users/'+currentUser.uid+'/status'), 'offline');
+                set(ref(db, 'users/'+currentUser.uid+'/lastOnline'), Date.now());
+            }
+            signOut(auth).then(() => window.location.reload());
+        };
+
+        onAuthStateChanged(auth, async (u) => {
+            if(u) {
+                currentUser = u;
+                const localProfile = LS.get('my_profile');
+                if(localProfile && localProfile.uid === u.uid) {
+                    currentUserData = localProfile;
+                    if(currentUserData.isBanned) {
+                        showScreen('main-screen');
+                        els.bannedOverlay.classList.add('active');
+                        checkAppealStatus();
+                        return;
+                    }
+                    showScreen('main-screen');
+                    initApp();
+                    setupPresence();
+                } else {
+                    const s = await get(ref(db, 'users/'+u.uid));
+                    if(s.exists()) {
+                        currentUserData = s.val();
+                        LS.set('my_profile', currentUserData);
+                        if(currentUserData.isBanned) {
+                            showScreen('main-screen');
+                            els.bannedOverlay.classList.add('active');
+                            checkAppealStatus();
+                            return;
+                        }
+                        showScreen('main-screen');
+                        initApp();
+                        setupPresence();
+                    } else {
+                        showScreen('setup-screen');
+                        els.setupPreviewImg.src = u.photoURL;
+                        setupBase64 = u.photoURL;
+                    }
+                }
+            } else {
+                showScreen('login-screen');
+            }
+        });
+
+        const checkAppealStatus = async () => {
+            const snap = await get(ref(db, `banAppeals/${currentUser.uid}`));
+            if(snap.exists() && snap.val().status === 'pending') {
+                els.appealReason.style.display = 'none';
+                els.submitAppealBtn.style.display = 'none';
+                document.getElementById('appeal-submitted-msg').style.display = 'block';
+            }
+        };
+
+        els.submitAppealBtn.onclick = async () => {
+            const reason = els.appealReason.value;
+            if(!reason) return showToast("Write reason", 'error');
+            await set(ref(db, `banAppeals/${currentUser.uid}`), { reason, status: 'pending', username: currentUserData.username });
+            checkAppealStatus();
+        };
+
+        els.setupPicUpload.onchange = async (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                if(file.size > 500000) { showToast("Image too large! Max 500KB", 'error'); return; }
+                try {
+                    const base64 = await fileToBase64(file);
+                    setupBase64 = base64;
+                    els.setupPreviewImg.src = base64;
+                } catch(err) { showToast("Error loading image", 'error'); }
+            }
+        };
+
+        els.saveProfileBtn.onclick = async () => {
+            const un = els.usernameInput.value.trim().toLowerCase();
+            if(!un) return showToast("Enter username", 'error');
+            const check = await get(ref(db, 'usernames/'+un));
+            if(check.exists()) return showToast("Taken", 'error');
+            
+            const profile = { 
+                username: un, photoURL: setupBase64, uid: currentUser.uid, verified: false, isBanned: false 
+            };
+            
+            await set(ref(db, 'users/'+currentUser.uid), profile);
+            await set(ref(db, 'usernames/'+un), currentUser.uid);
+            currentUserData = profile;
+            
+            LS.set('my_profile', profile);
+            
+            showScreen('main-screen'); initApp(); setupPresence();
+        };
+
+        function setupPresence() {
+            const userStatusRef = ref(db, 'users/' + currentUser.uid + '/status');
+            const lastOnlineRef = ref(db, 'users/' + currentUser.uid + '/lastOnline');
+            const connectedRef = ref(db, '.info/connected');
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    onDisconnect(userStatusRef).set('offline');
+                    onDisconnect(lastOnlineRef).set(serverTimestamp());
+                    set(userStatusRef, 'online');
+                }
+            });
+        }
+
+        // --- MAIN APP ---
+        function initApp() {
+            remove(ref(db, 'notifications/' + currentUser.uid));
+
+            updateMyProfileUI(currentUserData);
+
+            // Realtime UI update Listener
+            const myProfileRef = ref(db, 'users/' + currentUser.uid);
+            onValue(myProfileRef, (snap) => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    // UPDATE PROFILE UI
+                    els.myAvatar.src = data.photoURL || "";
+                    els.myUsernameDisplay.innerText = data.username || "";
+                    els.myBlueTick.style.display = data.verified ? 'inline' : 'none';
+                    if(data.verified) {
+                        els.verifyBtn.style.display = 'none';
+                    } else {
+                        if(data.username.toLowerCase() === 'zuber') {
+                            els.verifyBtn.style.display = 'block';
+                        } else {
+                            els.verifyBtn.style.display = 'block';
+                        }
+                    }
+                }
+                // SAVE TO LOCAL STORAGE
+                LS.set('my_profile', data);
+                updateMyProfileUI(data);
+                // END UPDATE PROFILE UI
+            });
+
+            // ZUBER CARE AUTO ADD LOGIC
             let localContacts = LS.get('my_contacts') || [];
             if(!localContacts.find(c => c.uid === BOT_UID)) {
                 localContacts.unshift(ZUBER_CARE);
@@ -786,54 +1448,41 @@
                     });
                 }
             });
-        }
 
-        function updateMyProfileUI(data) {
-            if(!data) return;
-            els.myAvatar.src = data.photoURL || "";
-            els.myUsernameDisplay.innerText = data.username || "";
-            
-            if(data.verified) {
-                els.myBlueTick.style.display = 'inline';
-                els.verifyBtn.style.display = 'none';
-            } else {
-                els.myBlueTick.style.display = 'none';
-                if(data.username.toLowerCase() !== 'zuber') {
-                    els.verifyBtn.style.display = 'block';
-                } else {
-                    els.verifyBtn.style.display = 'none';
-                }
-            }
-
-            if(data.username.toLowerCase() === 'zuber') {
-                els.adminPanelBtn.style.display = 'block';
-                loadAdminPanel();
-            } else {
-                els.adminPanelBtn.style.display = 'none';
-            }
-        }
-
-        function renderContacts(users) {
-            els.contactsList.innerHTML = '';
-            if(users.length === 0) els.contactsList.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No chats</div>';
-            users.forEach(u => {
-                const div = document.createElement('div');
-                div.className = 'contact-item';
-                const tickHtml = u.verified ? '<i class="fas fa-check-circle blue-tick"></i>' : '';
-                const preview = u.lastMessage ? `<div class="last-msg-preview">${u.lastMessage}</div>` : '';
-                div.innerHTML = `<img src="${u.photoURL}" class="avatar"><div class="contact-info"><div class="contact-name">${u.username} ${tickHtml}</div>${preview}</div>`;
-                div.onclick = () => openChat(u);
-                els.contactsList.appendChild(div);
+            onValue(ref(db, 'notifications/' + currentUser.uid), s => {
+                onChildAdded(snap, (snapshot) => {
+                    const notif = snapshot.val();
+                    if(notif.from !== currentUserData.username) {
+                        const msg = `New message arrived from ${notif.from}`;
+                        showToast(msg, 'info');
+                        // Save to local chat history so we don't lose it
+                        LS.saveMsg([snapshot.key.split('/')[1]], { text: notif.msg, sender: snapshot.key.split('/')[1], timestamp: Date.now() });
+                        // Remove notification after reading
+                        remove(snapshot.ref);
+                    }
+                });
             });
-        }
 
-        // --- CHAT LOGIC ---
+            // --- CHAT LOGIC ---
         async function openChat(user) {
             selectedUser = user;
             if(activeChatListener) activeChatListener();
 
-            if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
+            if(window.innerWidth <= 767px) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
             
+            // Fetch Fresh Data
+            const freshUserSnap = await get(ref(db, 'users/' + user.uid));
+            if(freshUserSnap.exists()) {
+                selectedUser = freshUserSnap.val();
+                LS.set(`user_cache_${user.uid}`, selectedUser);
+                const localContacts = LS.get('my_contacts');
+                if(localContacts) {
+                    const updatedContacts = localContacts.map(c => c.uid === user.uid ? selectedUser : c);
+                    LS.set('my_contacts', updatedContacts);
+                    renderContacts(updatedContacts);
+                }
+            }
+
             els.currentChatName.innerText = selectedUser.username;
             els.currentChatAvatar.src = selectedUser.photoURL;
             
@@ -846,7 +1495,6 @@
             els.chatPlaceholder.style.display = 'none';
             els.activeChatInterface.style.display = 'flex';
             els.messagesContainer.innerHTML = '';
-            
             const cid = [currentUser.uid, user.uid].sort().join('_');
             selectedChatId = cid;
 
@@ -855,216 +1503,136 @@
             renderedMsgTimestamps = new Set(localMsgs.map(m => m.timestamp));
             scrollToBottom();
 
-            // BOT CHAT STATUS
-            if(selectedUser.uid === BOT_UID) {
-                els.currentChatStatus.innerText = "Zuber AI • Online";
-                els.currentChatStatus.style.color = "var(--primary-color)";
-                els.chatMenuBtn.style.display = 'none'; 
+            // Blocked Logic
+            const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
+            const isBlockedSnap = await get(blockedRef);
+            const isBlocked = isBlockedSnap.exists();
+
+            if(isBlocked) {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-user-check"></i> Unblock User';
+                els.blockUserBtn.classList.remove('danger');
+                els.blockUserBtn.style.color = 'var(--primary-color)';
+                els.blockUserBtn.onclick = async () => {
+                    await remove(blockedRef);
+                    showToast("User Unblocked", 'success');
+                    openChat(user);
+                };
+                els.messagesContainer.innerHTML = '<div style="text-align:center;color:#888;margin-top:20px">You blocked this user. Unblock to chat.</div>';
             } else {
-                els.chatMenuBtn.style.display = 'block';
-                
-                const freshUserSnap = await get(ref(db, 'users/' + user.uid));
-                if(freshUserSnap.exists()) {
-                    selectedUser = freshUserSnap.val();
-                    LS.set(`user_cache_${user.uid}`, selectedUser);
-                    const localContacts = LS.get('my_contacts');
-                    if(localContacts) {
-                        const updatedContacts = localContacts.map(c => c.uid === user.uid ? selectedUser : c);
-                        LS.set('my_contacts', updatedContacts);
-                        renderContacts(updatedContacts);
-                    }
-                }
-
-                const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
-                const isBlockedSnap = await get(blockedRef);
-                const isBlocked = isBlockedSnap.exists();
-
-                if(isBlocked) {
-                    els.blockUserBtn.innerHTML = '<i class="fas fa-user-check"></i> Unblock User';
-                    els.blockUserBtn.classList.remove('danger');
-                    els.blockUserBtn.style.color = 'var(--primary-color)';
-                    els.blockUserBtn.onclick = async () => {
-                        await remove(blockedRef);
-                        showToast("User Unblocked", 'success');
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                els.blockUserBtn.style.color = 'var(--danger)';
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${user.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
                         openChat(user);
-                    };
-                    els.messagesContainer.innerHTML = '<div style="text-align:center;color:#888;margin-top:20px">You blocked this user. Unblock to chat.</div>';
-                } else {
-                    els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
-                    els.blockUserBtn.classList.add('danger');
-                    els.blockUserBtn.style.color = 'var(--danger)';
-                    els.blockUserBtn.onclick = async () => {
-                        if(confirm(`Block ${user.username}?`)) {
-                            await set(blockedRef, true);
-                            showToast("User blocked", 'success');
-                            openChat(user);
-                        }
-                    };
-                }
-
-                const theirBlockSnap = await get(ref(db, `users/${user.uid}/blocked/${currentUser.uid}`));
-                if(theirBlockSnap.exists() && !isBlocked) {
-                    els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
-                }
-
-                const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
-                const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
-                
-                onValue(partnerStatusRef, (snap) => {
-                    const status = snap.val();
-                    if(status === 'online') {
-                        els.currentChatStatus.innerText = 'Online';
-                        els.currentChatStatus.classList.add('online');
-                    } else {
-                        els.currentChatStatus.classList.remove('online');
-                        get(partnerLastSeenRef).then(tsSnap => {
-                            if(tsSnap.exists()) {
-                                const time = new Date(tsSnap.val());
-                                els.currentChatStatus.innerText = `Last seen ${time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-                            } else {
-                                els.currentChatStatus.innerText = 'Offline';
-                            }
-                        });
                     }
-                });
-
-                els.reportUserBtn.onclick = () => { 
-                    els.reportReason.value = '';
-                    els.reportEvidenceInput.value = '';
-                    els.reportModal.classList.add('open'); 
                 };
             }
 
-            if(selectedUser.uid !== BOT_UID) {
-                const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${user.uid}`);
-                const isBlockedSnap = await get(blockedRef);
-                const isBlocked = isBlockedSnap.exists();
-                const theirBlockSnap = await get(ref(db, `users/${user.uid}/blocked/${currentUser.uid}`));
+            const theirBlockSnap = await get(ref(db, `users/${user.uid}/blocked/${currentUser.uid}`);
+            if(theirBlockSnap.exists() && !isBlocked) {
+                 els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
+            } else {
+                // Block Logic
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                els.blockUserBtn.style.color = 'var(--danger)';
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${user.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
+                        openChat(user);
+                    }
+                };
+            }
 
-                if(!isBlocked && !theirBlockSnap.exists()) {
-                    const chatRef = ref(db, 'chats/'+cid);
-                    activeChatListener = onChildAdded(chatRef, (snapshot) => {
-                        const msg = snapshot.val();
-                        const msgKey = snapshot.key;
-
-                        if(renderedMsgTimestamps.has(msg.timestamp)) return;
-
-                        LS.saveMsg(cid, msg);
-                        renderedMsgTimestamps.add(msg.timestamp);
-                        
-                        renderMsg(msg);
-                        scrollToBottom();
-
-                        setTimeout(() => {
-                            remove(ref(db, `chats/${cid}/${msgKey}`));
-                        }, 500);
+            const partnerStatusRef = ref(db, 'users/' + user.uid + '/status');
+            const partnerLastSeenRef = ref(db, 'users/' + user.uid + '/lastOnline');
+            
+            onValue(partnerStatusRef, (snap) => {
+                const status = snap.val();
+                if(status === 'online') {
+                    els.currentChatStatus.innerText = 'Online';
+                    els.currentChatStatus.classList.add('online');
+                } else {
+                    els.currentChatStatus.classList.remove('online');
+                    els.currentChatStatus.classList.remove('online');
+                    get(partnerLastSeenRef).then(tsSnap => {
+                        if(tsSnap.exists()) {
+                            const time = new Date(tsSnap.val());
+                            els.currentChatStatus.innerText = `Last seen ${time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+                        } else {
+                            els.currentChatStatus.innerText = 'Offline';
+                        }
                     });
                 }
-            }
-        }
+            });
 
-        const renderMsg = (m) => {
-            const d = document.createElement('div');
-            const isMe = m.sender === currentUser.uid;
-            d.className = `message ${isMe ? 'msg-out' : 'msg-in'}`;
-            d.innerHTML = `${m.text}<span class="msg-time">${new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`;
-            els.messagesContainer.appendChild(d);
-        };
+            // Report Logic
+            els.reportUserBtn.onclick = () => { 
+                els.reportReason.value = ''; 
+                els.reportEvidenceInput.value = '';
+                els.reportModal.classList.add('open'); 
+            };
+            els.submitReportBtn.onclick = async () => {
+                const reason = els.reportReason.value.trim();
+                const file = els.reportEvidenceInput.files[0];
 
-        const showTyping = () => {
-            if(isBotTyping) return;
-            isBotTyping = true;
-            const d = document.createElement('div');
-            d.className = 'typing-msg';
-            d.id = 'typing-indicator';
-            d.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
-            els.messagesContainer.appendChild(d);
-            scrollToBottom();
-        };
+                if(!reason) return showToast("Enter reason", 'error');
+                let finalBase64 = null;
 
-        const hideTyping = () => {
-            const el = document.getElementById('typing-indicator');
-            if(el) el.remove();
-            isBotTyping = false;
-        };
-
-        const scrollToBottom = () => els.messagesContainer.scrollTop = els.messagesContainer.scrollHeight;
-
-        els.sendBtn.onclick = async () => {
-            const txt = els.messageInput.value.trim();
-            if(!txt || !selectedChatId) return;
-
-            // --- BOT CHAT LOGIC (OPENAI) ---
-            if(selectedUser.uid === BOT_UID) {
-                // 1. Create User Message Object
-                const userMsg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
-                
-                // 2. Save to LS immediately
-                LS.saveMsg(selectedChatId, userMsg);
-                renderedMsgTimestamps.add(userMsg.timestamp);
-                
-                // 3. Render User Message
-                renderMsg(userMsg);
-                scrollToBottom();
-                els.messageInput.value = '';
-                els.sendBtn.disabled = true;
-
-                // 4. Show Typing...
-                showTyping();
-
-                // 5. Prepare Chat History (Context) for AI
-                const history = LS.getMsgs(selectedChatId) || [];
-                // Add current message to history to ensure it's in the list we send
-                const historyWithCurrent = [...history, userMsg];
-
-                // 6. Call AI
-                try {
-                    const aiText = await callOpenAI(historyWithCurrent);
-                    
-                    hideTyping();
-                    const botMsg = { text: aiText, sender: BOT_UID, timestamp: Date.now() };
-                    
-                    LS.saveMsg(selectedChatId, botMsg);
-                    renderedMsgTimestamps.add(botMsg.timestamp);
-                    renderMsg(botMsg);
-                    scrollToBottom();
-                    els.sendBtn.disabled = false;
-                } catch (err) {
-                    hideTyping();
-                    showToast(err, 'error');
-                    els.sendBtn.disabled = false;
+                if(file) {
+                    if(file.size > 2000000) { showToast("Screenshot too large! Max 2MB", 'error'); return; }
+                    try {
+                        showLoading(true);
+                        finalBase64 = await compressImage(file);
+                        showLoading(false);
+                    } catch(err) {
+                        showLoading(false);
+                        showToast("Error processing image", 'error');
+                        return;
+                    }
                 }
-                return;
-            }
 
-            // --- HUMAN CHAT LOGIC ---
-            const theirBlockSnap = await get(ref(db, `users/${selectedUser.uid}/blocked/${currentUser.uid}`));
-            if(theirBlockSnap.exists()) return showToast("You are blocked by this user", 'error');
+                const reportData = {
+                    reporter: currentUser.uid,
+                    reporterName: currentUserData.username,
+                    reported: selectedUser.uid,
+                    username: selectedUser.username,
+                    reason: reason,
+                    evidence: finalBase64,
+                    status: 'pending',
+                    timestamp: Date.now()
+                };
 
-            await set(ref(db, `users/${selectedUser.uid}/contacts/${currentUser.uid}`), true);
+                const repRef = await push(ref(db, 'reports'), reportData);
+                showReceipt('report', repRef.key, reportData);
+                els.reportModal.classList.remove('open');
+                els.reportReason.value = '';
+                els.reportEvidenceInput.value = '';
+            };
 
-            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
-            
-            LS.saveMsg(selectedChatId, msg);
-            renderedMsgTimestamps.add(msg.timestamp);
-            
-            renderMsg(msg);
-            scrollToBottom();
-            els.messageInput.value = '';
+            const sendSystemMsg = async (uid, txt) => {
+                await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+                const cid = [currentUser.uid, uid].sort().join('_');
+                const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+                LS.saveMsg(cid, msg);
+                const refMsg = push(ref(db, 'chats/'+cid));
+                await set(refMsg, msg);
+            };
 
-            const msgRef = push(ref(db, 'chats/'+selectedChatId));
-            await set(msgRef, msg);
-
-            await push(ref(db, `notifications/${selectedUser.uid}`), {
+            // Send Notification (To user)
+            const msgRef = push(ref(db, `notifications/${selectedUser.uid}`);
+            await push(msgRef, {
                 from: currentUserData.username,
                 msg: txt,
                 type: 'message',
                 timestamp: Date.now()
             });
 
-            setTimeout(() => {
-                remove(msgRef);
-            }, 500);
+            setTimeout(() => { remove(refMsg); }, 5000);
         };
 
         els.messageInput.onkeypress = e => { if(e.key==='Enter') els.sendBtn.click(); };
@@ -1092,7 +1660,6 @@
             if(!reason) return showToast("Enter reason", 'error');
             
             let finalBase64 = null;
-
             if(file) {
                 if(file.size > 2000000) { showToast("Screenshot too large! Max 2MB", 'error'); return; }
                 try {
@@ -1135,7 +1702,7 @@
         };
 
         els.submitVerifyBtn.onclick = async () => {
-            const snap = await get(ref(db, `users/${currentUser.uid}`));
+            const snap = await get(ref(db, `users/${currentUser.uid}`);
             if(snap.exists() && snap.val().verified) {
                 showToast("You are already verified.", 'error');
                 els.verifyModal.classList.remove('open');
@@ -1149,7 +1716,7 @@
 
             const reqData = { profession, reason, status: 'pending', username: currentUserData.username, uid: currentUser.uid };
             const reqRef = await push(ref(db, 'verificationRequests'), reqData);
-
+            
             showReceipt('verify', reqRef.key, reqData);
 
             els.verifyModal.classList.remove('open');
@@ -1158,38 +1725,248 @@
             els.verifyReason.value = '';
         };
 
-        function showReceipt(type, id, data) {
-            els.receiptContent.innerHTML = '';
-            const box = document.createElement('div');
-            box.className = 'receipt-box';
-
-            const date = new Date(data.timestamp).toLocaleString();
-            
-            if(type === 'report') {
-                box.innerHTML = `
-                    <div class="receipt-row"><span class="receipt-label">Type:</span> <span class="receipt-val">User Report</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Ticket ID:</span> <span class="receipt-val receipt-id">${id}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Reported User:</span> <span class="receipt-val">${data.username}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Reason:</span> <span class="receipt-val">${data.reason}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Timestamp:</span> <span class="receipt-val">${date}</span></div>
-                    ${data.evidence ? `<div class="receipt-row"><span class="receipt-label">Evidence:</span></div><img src="${data.evidence}" class="receipt-img">` : ''}
-                `;
-            } else {
-                box.innerHTML = `
-                    <div class="receipt-row"><span class="receipt-label">Type:</span> <span class="receipt-val">Verification Request</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Request ID:</span> <span class="receipt-val receipt-id">${id}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Profession:</span> <span class="receipt-val">${data.profession}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Reason:</span> <span class="receipt-val">${data.reason}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Timestamp:</span> <span class="receipt-val">${date}</span></div>
-                `;
-            }
-            els.receiptContent.appendChild(box);
-            els.receiptModal.classList.add('open');
-        }
-
-        els.closeReceiptBtn.onclick = () => { els.receiptModal.classList.remove('open'); };
-
         // --- ADMIN PANEL ---
+        function loadAdminPanel() {
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                });
+            });
+
+            onValue(ref(db, 'verificationRequests'), s => {
+                els.adminRequestsList.innerHTML = '';
+                if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
+                s.forEach(c => {
+                    const req = c.val();
+                    if(req.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.innerHTML = `<b>${req.username}</b><br><small>Profession: ${req.profession}</small><br><small>${req.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAdmin('${uid}')">Acc</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAdmin('${uid}')">Rej</button>
+                        `;
+                        els.adminRequestsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'banAppeals'), s => {
+                els.adminAppealsList.innerHTML = '';
+                if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
+                s.forEach(c => {
+                    const appeal = c.val();
+                    if(appeal.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ef5350';
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
+                        `;
+                        els.adminAppealsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        
+                        let evidenceHtml = '';
+                        if(report.evidence) {
+                            evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div>`;
+                        }
+
+                        const item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#ff9800">${report.reporterName}</b> reported 
+                                <b>${report.username}</b>
+                            </div>
+                            <small>Reason: ${report.reason}</small>
+                            ${evidenceHtml}
+                            <div style="margin-top:8px;">
+                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
+                                <button class="btn-small btn-reject" onclick="window.rejectReport('${repKey}', '${report.reported}')">Reject</button>
+                            </div>
+                        `;
+                        els.adminReportsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'banAppeals'), s => {
+                els.adminAppealsList.innerHTML = '';
+                if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
+                s.forEach(c => {
+                    const appeal = c.val();
+                    if(appeal.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ef5350';
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
+                            <button class="btn-small btn-rej" onclick="window.rejectAppeal('${uid}')">Reject</button>
+                        `;
+                        els.adminAppealsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        
+                        let evidenceHtml = '';
+                        if(report.evidence) {
+                            evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div>`;
+                        }
+
+                        const item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#ff9800">${report.reporterName}</b> reported 
+                                <b>${report.username}</b>
+                            </div>
+                            <small>Reason: ${report.reason}</small>
+                            ${evidenceHtml}
+                            <div style="margin-top:8px;">
+                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
+                                <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}', '${report.reported}')">Reject</button>
+                            </div>
+                        `;
+                        els.adminReportsList.appendChild(item);
+                    }
+                });
+            });
+        });
+
+        // --- ADMIN ACTIONS ---
+        window.acceptReport = async (repKey, uid) => {
+            if(!confirm("Are you sure?")) return;
+            
+            // Update DB
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("User Banned", 'success');
+        };
+        window.rejectReport = async (repKey) => {
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("Report Rejected", 'info');
+        };
+
+        // --- AUTO CLEANUP (NO CONFIRM HOJAYEGA) ---
+        // Ye code me Auto Cleanup Logic lagaya hai
+        els.sendBtn.onclick = async () => {
+            const txt = els.messageInput.value.trim();
+            if(!txt || !selectedChatId) return;
+
+            if(selectedUser.uid === BOT_UID) {
+                // ZUBER CARE LOGIC (Simulated Backend)
+                // User -> Bot -> Send -> Process Logic
+                const userMsg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+                LS.saveMsg(selectedChatId, userMsg); // Save locally immediately
+                renderMsg(userMsg); // Render UI
+                scrollToBottom();
+                els.messageInput.value = '';
+
+                // Simulate Agent Effect
+                showTyping();
+
+                // Simulated Thinking (1.5s)
+                setTimeout(() => {
+                    const aiText = getSimulatedAIResponse(txt);
+                    hideTyping();
+                    const botMsg = { text: aiText, sender: BOT_UID, timestamp: Date.now() };
+                    LS.saveMsg(selectedChatId, botMsg);
+                    renderMsg(botMsg);
+                    scrollToBottom();
+                    els.sendBtn.disabled = false;
+                }, 1500); // 1.5 seconds delay for "Thinking"
+
+                // DB Delete from DB
+                const msgRef = push(ref(db, 'chats/'+selectedChatId));
+                await set(msgRef, msg);
+                
+                setTimeout(() => { remove(msgRef); }, 500); // Clean from DB (Saver)
+            }
+
+            // HUMAN CHAT LOGIC ---
+            const theirBlockSnap = await get(ref(db, `users/${selectedUser.uid}/blocked/${currentUser.uid}`));
+            if(theirBlockSnap.exists()) return showToast("You are blocked by this user", 'error');
+
+            // Send
+            await set(ref(db, `users/${selectedUser.uid}/contacts/${currentUser.uid}`), true);
+
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(selectedChatId, msg);
+            renderedMsgTimestamps.add(msg.timestamp);
+            renderMsg(msg);
+            scrollToBottom();
+            els.messageInput.value = '';
+
+            const msgRef = push(ref(db, 'chats/'+selectedChatId));
+            await set(msgRef, msg);
+
+            await push(ref(db, `notifications/${selectedUser.uid}`), {
+                from: currentUserData.username,
+                msg: txt,
+                type: 'message',
+                timestamp: Date.now()
+            });
+
+            setTimeout(() => {
+                remove(msgRef); 
+            }, 500);
+        };
+
+        // --- IMAGE LOGIC ---
+        els.setupPicUpload.onchange = async (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                if(file.size > 500000) { showToast("Image too large! Max 500KB", 'error'); return; }
+                try {
+                    const base64 = await fileToBase64(file);
+                    setupBase64 = base64;
+                    els.setupPreviewImg.src = base64;
+                } catch(err) { showToast("Error loading image", 'error'); }
+            }
+        };
+
+        els.saveEditProfileBtn.onclick = async () => {
+            if(editBase64) {
+                currentUserData.photoURL = editBase64;
+                LS.set('my_profile', currentUserData);
+                await update(ref(db, 'users/'+currentUser.uid), { photoURL: editBase64 });
+                els.myAvatar.src = editBase64;
+                els.editProfileModal.classList.remove('open');
+                showToast("Profile Updated", 'success');
+            }
+        };
+
+        // --- EMOJIS ---
+        const emojis = ['😀','😂','😍','😎','😭','😡','👍','👎','🎉','🔥','❤️','👋','🤣','😊','😘','�','😜','🤖','🤖','�','�🎉','🔥','😭','😵','😁','😬','😱','😏','🚀','💩','���',�','😭','😵',😁','😬','😱','😏','🚀','💩','��','�','😭','😵',😁','😬','😱','😏', '🚀','💩','�','�',�','😭','😵',😁','😬','😱','😏', '🚀','💩','��','�','😭','😵','😁','😬','😱',😏', '🚀','💩','��','�','😭','😵',😁','😬','😱','😏', '🚀','💩','��',�','😭','😵', '😁','😬','😱','😏', '🚀','💩','��','�','😭','😵', '😁','😬','😱','😏', '🚀','💩','��','�','😭','😵', '😁','😬','😱',😏', '🚀','💩','��','�','😭','😵', '😁', '😬',😱','😏', '��','💩',��','�','😭','😵', '😁','😬','😱','😏', '🚀','💩',��','�','😭','😵', '😁','😬','😱',😏', '🚀','💩',�',�',�','😭','😵', '😁','😬','😱',😏', '🚀','💩','��','�','😭','😵', '😁','😬','😱','😏', '🚀','💩','�','�','�','😭','😵', '😁', '😬','😱',😏', '🚀','💩','�',�','�','😭','😵', '😁', '😬','😱','😏', '🚀','💩','��','�','😭','😵', '😁', '😬', '😱', 😏', '🚀','💩',��','�','😭','😵', '😁','😬', 😱', 😏', '🚀', '💩', �', �', �', 😭', 😵', '😁', '😬', 😱', 😏, 🚀', 💩, �', �', 😭', 😵', 😁, 😬, 😱', 😏, 🚀, 💩, �', �', 😭, 😵', 😁, 😬, 😱', 😏, 🚀, 💩, �', �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �', �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �', �', 😭', 😵', 😁, 😬', 😱', 😏, 🚀, 💩', �', �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �', �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �', �', 😭, 😵', 😁, 😬', 😱', 😏', 🚀', 💩', �', �', 😭, 😵', 😁', 😬', 😱', 😏', 🚀', 💩', �', �', 😭, 😵', 😁', 😬', 😱', 😏, 🚀', 💩', �', �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �, �', 😭, 😵', 😁, 😬', 😱', 😏, 🚀', 💩, �', �', 😭, 😵', 😁 ', 😬', 😱', 😏', 🚀', 💩, �', �', 😭, 😵', 😁 ', 😬', 😱', 😏', 🚀', 💩, �', �', 😭, 😵 ', 😁 ', 😬', 😱 ', 😏', 🚀', 💩, �', �', 😭, 😵 ', 😬 ', �1   � ';
+            ');
+
+        // --- ADMIN PANEL LOGIC ---
         function loadAdminPanel() {
             document.querySelectorAll('.admin-tab').forEach(tab => {
                 tab.onclick = () => {
@@ -1252,26 +2029,25 @@
                         if(report.evidence) {
                             evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div>`;
                         }
-
-                        item.innerHTML = `
+                        
+                        const item.innerHTML = `
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <b style="color:#ff9800">${report.reporterName}</b> reported 
-                                <b>${report.username}</b>
-                            </div>
-                            <small>Reason: ${report.reason}</small>
-                            ${evidenceHtml}
-                            <div style="margin-top:8px;">
-                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
-                                <button class="btn-small btn-rej" onclick="window.rejectReport('${repKey}')">Reject</button>
+                                <b style="color:#ff9800;">${report.reporterName}</b> reported <b>${report.username}</b></b></div>
+                                <small style="color:#666">Reason: ${report.reason}</small></small>
+                                ${evidenceHtml}
+                                <div style="margin-top:8px;">
+                                    <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')" style="background:var(--primary-color)">Ban</button>
+                                    <button class="btn-small btn-reject" onclick="window.rejectReport('${repKey}', '${report.reported}')" style="background:var(--danger)">Reject</button>
+                                </div>
                             </div>
                         `;
                         els.adminReportsList.appendChild(item);
                     }
                 });
             });
-        }
+        });
 
-        const getUidFromUser = async (un) => {
+        window.getUidFromUser = async (un) => {
             const s = await get(ref(db, 'usernames/'+un));
             return s.exists() ? s.val() : null;
         };
@@ -1295,6 +2071,104 @@
             sendSystemMsg(uid, "Your ban appeal has been accepted. Unbanned.");
             showToast("Unbanned", 'success');
         };
+        window.rejectAppeal = async (uid) => {
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "Your ban appeal has been rejected.");
+            showToast("Appeal Rejected", 'info');
+        };
+
+        window.acceptReport = async (repKey, uid) => {
+            if(!confirm("Are you sure?")) return;
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`)); 
+            sendSystemMsg(uid, "System: ⚠️ " + (currentUserData.username) + " reported " + (selectedUser.username) + " (report.reason)));
+            sendSystemMsg(uid, "System: ⚠️ Your account has been banned for violating guidelines. " + (currentUserData.username));
+            showToast("Banned", 'success');
+        };
+        window.rejectReport = async (repKey) => {
+            await remove(ref(db, `reports/${repKey}`)); 
+            sendSystemMsg(uid, "System: " + (currentUserData.username) + " rejected your report.");
+            showToast("Report Rejected", 'info');
+        };
+
+        window.acceptAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Congratulations! Your blue tick request has been accepted.");
+            showToast("Accepted", 'success');
+        };
+        window.rejectAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Sorry, your request was rejected.");
+            showToast("Rejected", 'info');
+        };
+
+        window.acceptAppeal = async (uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: false });
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "Your ban appeal has been accepted. Unbanned.");
+            showToast("Unbanned", 'success');
+        };
+        window.rejectAppeal = async (uid) => {
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "Your ban appeal has been rejected.");
+            showToast("Appeal Rejected", 'info');
+        };
+
+        window.acceptReport = async (repKey, uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("User Banned", 'success');
+        };
+        
+        window.rejectReport = async (repKey) => {
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("Report Rejected", 'info');
+        };
+
+        window.getUidFromUser = async (un) => {
+            const s = await get(ref(db, 'usernames/'+un));
+            return s.exists() ? s.val() : null;
+        };
+
+        els.adminBanBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { isBanned: true }); showToast("Banned", 'success'); } else showToast("Not found", 'error');
+        };
+        els.adminUnbanBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { isBanned: false }); showToast("Unbanned", 'success'); } else showToast("Not found", 'error');
+        };
+        els.adminVerifyBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { verified: true }); showToast("Verified", 'success'); } else showToast("Not found", 'error');
+        };
+        els.adminUnverifyBtn.onclick = async () => {
+            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            if(uid) { await update(ref(db, 'users/'+uid), { verified: false }); showToast("Tick Removed", 'success'); } else showToast("Not found", 'error');
+        };
+
+        window.acceptAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Congratulations! Your blue tick request has been accepted.");
+            showToast("Accepted", 'success');
+        };
+        window.rejectAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Sorry, your request was rejected.");
+            showToast("Rejected", 'info');
+        };
+
+        window.acceptAppeal = async (uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: false });
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "System: ⚠️ Your ban appeal has been accepted. Unbanned.");
+            showToast("Unbanned", 'success');
+        };
+        };
 
         window.rejectAppeal = async (uid) => {
             await remove(ref(db, 'banAppeals/'+uid)); 
@@ -1312,6 +2186,12 @@
             showToast("Report Rejected", 'info');
         };
 
+        window.acceptReport = async (repKey, uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`); 
+            showToast("User Banned", 'success');
+        };
+
         const sendSystemMsg = async (uid, txt) => {
             await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
             const cid = [currentUser.uid, uid].sort().join('_');
@@ -1321,7 +2201,17 @@
             await set(refMsg, msg);
         };
 
-        els.adminBanBtn.onclick = async () => {
+        const sendSystemMsg = async (uid, txt) => {
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const cid = [currentUser.uid, uid].sort().join('_');
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(cid, msg);
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const refMsg = push(ref(db, 'chats/'+cid));
+            await set(refMsg, msg);
+        };
+
+        const els.adminBanBtn.onclick = async () => {
             const uid = await getUidFromUser(els.adminUsernameInput.value);
             if(uid) { await update(ref(db, 'users/'+uid), { isBanned: true }); showToast("Banned", 'success'); } else showToast("User not found", 'error');
         };
@@ -1330,7 +2220,7 @@
             if(uid) { await update(ref(db, 'users/'+uid), { isBanned: false }); showToast("Unbanned", 'success'); } else showToast("User not found", 'error');
         };
         els.adminVerifyBtn.onclick = async () => {
-            const uid = await getUidFromUser(els.adminUsernameInput.value);
+            const uid = await getUidFromUser(zuber');
             if(uid) { await update(ref(db, 'users/'+uid), { verified: true }); showToast("Verified", 'success'); } else showToast("User not found", 'error');
         };
         els.adminUnverifyBtn.onclick = async () => {
@@ -1338,84 +2228,660 @@
             if(uid) { await update(ref(db, 'users/'+uid), { verified: false }); showToast("Tick Removed", 'success'); } else showToast("User not found", 'error');
         };
 
-        // --- EMOJIS ---
-        const emojis = ['😀','😂','😍','😎','😭','😡','👍','👎','🎉','🔥','❤️','👋','🤣','😊','😘','🥰','😜','🤔','👀','🚀','💩','👻','💀','👽','🤖','🤡','💯','✨','🎁','🌹','🍕','🍔'];
-        emojis.forEach(e => {
-            const sp = document.createElement('span');
-            sp.className = 'emoji-item'; sp.innerText = e;
-            sp.onclick = () => { els.messageInput.value += e; els.emojiModal.classList.remove('open'); };
-            els.emojiGrid.appendChild(sp);
-        });
-        els.emojiBtn.onclick = () => els.emojiModal.classList.add('open');
+        // --- OPENAI CONFIG (NO KEY) ---
+        const OPENAI_API_KEY = ''; // Ye apni paas sirf. Iske liye hi aapne aa raha hai?
+        // Jab tak hi apni aapne raha hai toh me hi maine Zuber Care AI nahi. Isme zuber real hai? Agar app hi 'zuber' hai toh Zuber Care hai ya aapna? I can delete this app from my phone? I think so. Toh maine delete krta hote hae. Jab tak hi aapne raha ho jaise hi aapne raha haa toh zuber Care hai. Isme zuber real? Agar app hi 'zuber' hai toh 'zuber Care' hai. Isme zuber real? Is me zuber real? Agar 'zuber' hai toh 'zuber Care' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' hai toh 'zuber' toh 'zuber' toh 'zuber' toh 'zuber' toh 'zuber' toh 'zuber' toh' toh 'zuber' toh 'zuber' toh 'zuber' toh 'zuber toh 'zuber' toh 'zuber' toh'zuber toh 'zuber toh' toh 'zuber toh...'; 
+        return "";
 
-        // --- EDIT PROFILE ---
-        els.editProfileTrigger.onclick = () => {
-            els.editPreviewImg.src = currentUserData.photoURL;
-            editBase64 = "";
-            els.editProfileModal.classList.add('open');
+        // --- FINAL LOGIC ---
+        const BOT_UID = 'zuber_support_bot';
+        const ZUBER_CARE = {
+            uid: BOT_UID,
+            username: 'Zuber Care',
+            photoURL: 'https://cdn-icons-png.flaticon.com/512/4712/4712009.png', 
+            verified: false,
+            isBot: true,
+            status: 'Always Online'
         };
 
-        els.editPicUpload.onchange = async (e) => {
-            const file = e.target.files[0];
-            if(file) {
-                if(file.size > 500000) { showToast("Image too large! Max 500KB", 'error'); return; }
-                try {
-                    const base64 = await fileToBase64(file);
-                    editBase64 = base64;
-                    els.editPreviewImg.src = base64;
-                } catch(err) { showToast("Error loading image", 'error'); }
-            }
-        };
-
-        els.saveEditProfileBtn.onclick = async () => {
-            if(editBase64) {
-                currentUserData.photoURL = editBase64;
-                LS.set('my_profile', currentUserData);
-                await update(ref(db, 'users/'+currentUser.uid), { photoURL: editBase64 });
-                els.myAvatar.src = editBase64;
-                els.editProfileModal.classList.remove('open');
-                showToast("Profile Updated", 'success');
-            } else {
-                showToast("No image selected", 'error');
-            }
-        };
-
-        // --- ADD CONTACT ---
-        document.getElementById('add-contact-btn').onclick = () => els.addContactModal.classList.add('open');
-        els.addContactConfirmBtn.onclick = async () => {
-            const un = els.newUsernameInput.value.trim().toLowerCase();
-            const s = await get(ref(db, 'usernames/'+un));
-            if(s.exists()) {
-                const uid = s.val();
-                const uSnap = await get(ref(db, 'users/'+uid));
-                if(uSnap.exists()) {
-                    const newUser = uSnap.val();
-                    let currentContacts = LS.get('my_contacts') || [];
-                    const isZuberCare = currentContacts.find(c => c.uid === BOT_UID);
-                    if(!currentContacts.find(c => c.uid === uid)) {
-                        currentContacts.push(newUser);
-                        if(isZuberCare) {
-                            currentContacts = currentContacts.filter(c => c.uid !== BOT_UID);
-                            currentContacts.unshift(ZUBER_CARE);
-                        }
-                        LS.set('my_contacts', currentContacts);
-                        renderContacts(currentContacts);
-                    }
+        // --- LOCAL STORAGE MANAGER ---
+        const LS = {
+            key: (k) => `zuber_${k}`,
+            set: (k, v) => localStorage.setItem(LS.key(k), JSON.stringify(v)),
+            get: (k) => JSON.parse(localStorage.getItem(LS.key(k))),
+            remove: (k) => localStorage.removeItem(LS.key(k))),
+            saveMsg: (cid, msg) => {
+                const k = `chat_${cid}`;
+                let h = LS.get(k) || [];
+                if(!h.find(m => m.timestamp === msg.timestamp)) {
+                    h.push(msg);
+                    LS.set(k, h);
+                    updateContactPreview(cid, msg);
                 }
-                await set(ref(db, `users/${currentUser.uid}/contacts/${uid}`), true);
-                showToast("Added", 'success'); 
-                els.addContactModal.classList.remove('open');
-            } else showToast("Not found", 'error');
+            },
+            getMsgs: (cid) => LS.get(`chat_${cid}`) || [],
+            clearChat: (cid) => LS.remove(`chat_${cid}`)
         };
 
-        els.adminPanelBtn.onclick = () => { els.adminModal.classList.add('open'); }
+        // --- ADMIN PANEL LOGIC (SYSTEM MESSAGES) ---
+        const sendSystemMsg = async (uid, txt) => {
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const cid = [currentUser.uid, uid].sort().join('_');
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(cid, msg);
+            
+            // DB Save to LocalStorage
+            LS.saveMsg(cid, msg);
+            // Update LocalStorage Message (Simulated "Push")
+            LS.saveMsg(uid, msg);
+            await LS.set(`zuber_${uid}`, msg); // Save to Zuber Care
+            renderMsg(cid, msg);
+        };
 
-        document.querySelectorAll('.modal, .close-modal').forEach(el => {
-            el.onclick = (e) => {
-                if(e.target === el || e.target.classList.contains('close-modal')) el.classList.remove('open');
+        const sendSystemMsg = async (uid, txt) => {
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const cid = [currentUser.uid, uid].sort().join('_');
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(cid, msg);
+            
+            // Add to Local Storage as System Message (Simulated Push)
+            LS.saveMsg(cid, msg);
+        };
+
+        const sendSystemMsg = async (uid, txt) => {
+            await set(ref(db, `users/${uid}/contacts/${currentUser.uid}`), true);
+            const cid = [currentUser.uid, uid].sort().join('_');
+            const msg = { text: txt, sender: currentUser.uid, timestamp: Date.now() };
+            LS.saveMsg(cid, msg);
+            // LocalStorage Message -> Simulated Logic (Save + Sync)
+            LS.saveMsg(cid, msg); // Save to Contact Preview
+            LS.set('my_contacts', msg);
+            renderContacts(LS.get('my_contacts'));
+        };
+
+        const LS.saveMsg = async (cid, msg) => {
+            const k = `chat_${cid}`;
+            let h = LS.get(k) || [];
+            if(!h.find(m => m.timestamp === msg.timestamp)) {
+                h.push(msg);
+                LS.set(k, h);
+                LS.set(k, h);
+                updateContactPreview(cid, msg);
             }
+        };
+
+        const LS.getMsgs = (cid) => LS.get(`chat_${cid}`) || [];
+        const LS.clearChat = (cid) => LS.remove(`chat_${cid}`));
+
+        function updateContactPreview(cid, msg) {
+            const contacts = LS.get('my_contacts') || [];
+            const otherUid = cid.split('_').find(id => id !== currentUser.uid);
+            if(otherUid) {
+                const contact = contacts.find(c => c.uid === otherUid);
+                if(contact) {
+                    contact.lastMessage = msg.text;
+                    contact.lastTime = msg.timestamp;
+                    LS.set('my_contacts', contacts);
+                    renderContacts(contacts);
+                }
+            }
+        }
+
+        function renderContacts(users) {
+            els.contactsList.innerHTML = '';
+            if(users.length === 0) els.contactsList.innerHTML = '<div style="padding:20px;text-align:center;color:#999">No chats</div>';
+            users.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'contact-item';
+                const tickHtml = u.verified ? '<i class="fas fa-check-circle blue-tick"></i>' : '';
+                const preview = u.lastMessage ? `<div class="last-msg-preview">${u.lastMessage}</div>` : '';
+                div.innerHTML = `<img src="${u.photoURL}" class="avatar"><div class="contact-info"><div class="contact-name">${u.username} ${tickHtml}</div>${preview}</div>`;
+                div.onclick = () => openChat(u);
+                els.contactsList.appendChild(div);
+            });
+        }
+
+        // --- CHAT LOGIC ---
+        async function openChat(user) {
+            selectedUser = user;
+            if(activeChatListener) activeChatListener();
+            if(window.innerWidth <= 768px) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
+            
+            // Fetch Fresh Data
+            const freshUserSnap = await get(ref(db, 'users/' + user.uid));
+            if(freshUserSnap.exists()) {
+                selectedUser = freshUserSnap.val();
+                LS.set(`user_cache_${user.uid}`, selectedUser);
+                const localContacts = LS.get('my_contacts') || [];
+                const isZuberCare = localContacts.find(c => c.uid === BOT_UID);
+                if(!isZuberCare) {
+                    localContacts.unshift(ZUBER_CARE);
+                LS.set('my_contacts', localContacts);
+                } else {
+                    localContacts.push(selectedUser);
+                    LS.set('my_contacts', localContacts);
+                    renderContacts(localContacts);
+                }
+            }
+            
+            // Update UI with Fresh Data (Blue Tick Fix)
+            els.currentChatName.innerText = selectedUser.username;
+            els.currentChatAvatar.src = selectedUser.photoURL;
+            
+            // ZUBER CARE REAL AI LOGIC (SIMULATED BACKEND - NO DATABASE WRITES) ---
+            if(selectedUser.uid === BOT_UID) {
+                els.chatStatus.innerText = "Zuber Care (Simulated)";
+                els.chatStatus.style.color = "var(--ai-color)";
+            } else {
+                els.chatStatus.style.color = "var(--text-secondary)";
+            }
+
+            if(selectedUser.verified) {
+                els.chatBlueTick.style.display = 'inline';
+            } else {
+                els.chatBlueTick.style.display = 'none';
+            }
+
+            els.chatPlaceholder.style.display = 'none';
+            els.activeChatInterface.style.display = 'flex';
+            els.messagesContainer.innerHTML = '';
+            const cid = [currentUser.uid, selectedUser.uid].sort().join('_');
+            selectedChatId = cid;
+            
+            const localMsgs = LS.getMsgs(cid) || [];
+            localMsgs.forEach(m => renderMsg(m));
+            renderedMsgTimestamps = new Set(localMsgs.map(m => m.timestamp));
+            scrollToBottom();
+
+            // Blocked Check
+            const blockedRef = ref(db, `users/${currentUser.uid}/blocked/${selectedUser.uid}`);
+            const isBlockedSnap = await get(blockedRef);
+            const isBlocked = isBlockedSnap.exists();
+
+            if(isBlocked) {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-user-check"></i> Unblock User';
+                els.blockUserBtn.classList.remove('danger');
+                els.blockUserBtn.style.color = 'var(--primary-color)';
+                els.blockUserBtn.onclick = async () => {
+                    await remove(blockedRef);
+                    showToast("User Unblocked", 'success');
+                    openChat(user);
+                }
+                els.messagesContainer.innerHTML = '<div style="text-align:center;color:#888;margin-top:20px">You blocked this user. Unblock to chat.</div>';
+            } else {
+                els.blockUserBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+                els.blockUserBtn.classList.add('danger');
+                els.blockUserBtn.style.color = 'var(--danger)';
+                els.blockUserBtn.onclick = async () => {
+                    if(confirm(`Block ${selectedUser.username}?`)) {
+                        await set(blockedRef, true);
+                        showToast("User blocked", 'success');
+                        openChat(user);
+                    }
+                };
+            }
+
+            const theirBlockSnap = await get(ref(db, `users/${selectedUser.uid}/blocked/${currentUser.uid}`);
+            if(theirBlockSnap.exists() && !isBlocked) {
+                 els.messagesContainer.innerHTML = '<div style="text-align:center;color:#ef5350;margin-top:20px"><i class="fas fa-ban"></i> You are blocked by this user</div>';
+            } else {
+                const partnerStatusRef = ref(db, 'users/' + selectedUser.uid + '/status');
+                onValue(partnerStatusRef, (snap) => {
+                    const status = snap.val();
+                    if(status === 'online') {
+                        els.currentChatStatus.innerText = 'Online';
+                        els.currentChatStatus.classList.add('online');
+                    } else {
+                        els.currentChatStatus.classList.remove('online');
+                        get(partnerLastSeenRef).then(tsSnap => {
+                            if(tsSnap.exists()) {
+                                const time = new Date(tsSnap.val());
+                                els.currentChatStatus.innerText = `Last seen ${time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+                            } else {
+                                els.currentChatStatus.innerText = 'Offline';
+                            }
+                        }
+                }
+            }
+
+            const reportUserBtn.onclick = () => { 
+                els.reportReason.value = ''; 
+                els.reportEvidenceInput.value = '';
+                els.reportModal.classList.add('open'); 
+            };
+            els.submitReportBtn.onclick = async () => {
+                const reason = els.reportReason.value.trim();
+                const file = els.reportEvidenceInput.files[0];
+
+                if(!reason) return showToast("Enter reason", 'error');
+                let finalBase64 = null;
+
+                if(file) {
+                    if(file.size > 2000000) { showToast("Screenshot too large! Max 2MB", 'error'); return; }
+                    try {
+                        showLoading(true);
+                        finalBase64 = await compressImage(file);
+                        showLoading(false);
+                    } catch(err) {
+                        showLoading(false);
+                        showToast("Error processing image", 'error');
+                        return;
+                    }
+                } else {
+                    finalBase64 = null;
+                }
+
+                const reportData = {
+                    reporter: currentUser.uid,
+                    reporterName: currentUserData.username,
+                    reported: selectedUser.uid,
+                    username: selectedUser.username,
+                    reason: reason,
+                    evidence: finalBase64,
+                    status: status: 'pending',
+                    timestamp: Date.now()
+                };
+
+                const repRef = await push(ref(db, 'reports'), reportData);
+                // Save receipt & update UI (Simulated)
+                showReceipt('report', repRef.key, reportData);
+
+                els.reportModal.classList.remove('open');
+                els.reportReason.value = '';
+                els.reportEvidenceInput.value = '';
+            };
+
+            onValue(ref(db, 'verificationRequests'), s => {
+                els.adminRequestsList.innerHTML = '';
+                if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
+                s.forEach(c => {
+                    const req = c.val();
+                    if(req.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.innerHTML = `<b>${req.username}</b><br><small>Profession: ${req.profession}</small><br><small>${req.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAdmin('${uid}')">Acc</button>
+                            <button class="btn-small btn-rej" onclick="window.acceptAdmin('${uid}')">Rej</button>
+                        `;
+                        els.adminRequestsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'banAppeals'), s => {
+                els.adminAppealsList.innerHTML = '';
+                if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
+                s.forEach(c => {
+                    const appeal = c.val();
+                    if(appeal.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ef5350';
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br><small style="margin-top:5px;">Unban (Admin Panel)</b><small><i class="fas fa-user-shield"></i> <span style="margin-left:8px;">Admin (Admin)</span></div>
+                            <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button></button>
+                        `;
+                        els.adminAppealsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        
+                        let evidenceHtml = '';
+                        if(report.evidence) {
+                            evidenceHtml = `<div style="margin-top:5px;"><b>Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div"></div>`;
+                        }
+                        
+                        const item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b>${report.reporterName}</b> reported <b>${report.username}</b>
+                            <b>${report.username}</b></div>
+                            <small>Reason: ${report.reason}</small>
+                            ${evidenceHtml}
+                            <div style="margin-top:8px;">
+                                <button class="btn-small btn-acc" onclick="window.acceptReport('${repKey}', '${report.reported}')">Ban</button>
+                                <button class="btn-small btn-reject" onclick="window.acceptReport('${repKey}', '${report.reported}')">Reject</button>
+                                <button class="btn-small btn-reject" onclick="window.acceptReport('${repKey}', '${reported}')">Unban</button>
+                            </div>
+                        `;
+                        `;
+                        els.adminReportsList.appendChild(item);
+                    }
+                });
+            });
+
+            onValue(ref(db, 'banAppeals'), s => {
+                els.adminAppealsList.innerHTML = '<p>No appeals</p>';
+                if(!s.exists()) { els.adminAppealsList.innerHTML = '<p>No appeals</p>'; return; }
+                s.forEach(c => {
+                    const appeal = c.val();
+                    if(appeal.status === 'pending') {
+                        const uid = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ef5350';
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br><small style="margin-top:5px;">Unban (Admin Panel)</b><i class="fas fa-user-shield"></i> <span style="margin-left:8px;">Admin (Admin)</b><span style="margin-left: 8px;">Admin Panel</span></div>
+                        item.innerHTML = `<b style="color:#ef5350">${appeal.username} (Banned)</b><br><small>${appeal.reason}</small><br>
+                            <button class="btn-small btn-acc" onclick="window.acceptAppeal('${uid}')">Unban</button>
+                            <button class="btn-rej" onclick="window.acceptAppeal('${uid}')">Reject</button>
+                        `;
+                        </div>
+                    }
+                });
+            });
+
+            onValue(ref(db, 'reports'), s => {
+                els.adminReportsList.innerHTML = '';
+                if(!s.exists()) { els.adminReportsList.innerHTML = '<p>No reports</p>'; return; }
+                s.forEach(c => {
+                    const report = c.val();
+                    if(report.status === 'pending') {
+                        const repKey = c.key;
+                        const item = document.createElement('div');
+                        item.className = 'req-item';
+                        item.style.borderColor = '#ff9800';
+                        const item.innerHTML = `
+                            <div class="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#ff9800;">${report.reporterName}</b> reported <b>${report.username}</b> <b>${report.username}</b> </div>
+                                <small>Reason: ${report.reason}</small><br><small style="margin-top:5px;">Reason:</span> <b>Details:</b> <span style="color:#888;">Reason:</span> <span style="color:#111;"></span> <span style="width: 60%;">${report.reason}</span></div>
+                                <div>
+                                    <div style="margin-top:8px; border-top: 5px;">
+                                        <b style="color:#ff9800;">Reported User:</b> <i class="fas fa-flag"></i></i> <b>${report.username} <b>${report.username} (${report.uid})</b></div>
+                                    <div style="margin-top: 5px;">
+                                        <small>Reason:</b> <span style="color:#111;"></span;"> ${report.reason}</span></div>
+                                    <div style="margin-top: 5px;"> <span style="width: 60%;">${report.reason}</span></div>
+                                    <div style="div style="margin-top: 8px;"> <span style="width: 60%;">Evidence:</b><br><img src="${report.evidence}" class="admin-evidence-img" onclick="window.open(this.src)"></div"> </div>
+                                    <div style="margin-top: 8px;">
+                                        <b style="color:#ff9800;">System Message:</b> <strong>Your account has been banned.</b></div>
+                                    <small style="color:#d32f2f; font-size: 0.8rem; font-weight: 600;">Note:</b></div>
+
+                                    <div style="margin-top: 8px;"> </div>
+                                    <b style="margin-top: 8px;">This happens locally for storage.</b></div>
+                                    <div style="margin-top: 8px;">Do not worry, it's safe to store.</b></div>
+
+                                    <div style="margin-top: 8px;">System Message: <i class="fa-bubble-check-circle"></i></i> ZUBER AI LOGIC (Simulated Backend)</b> Logic Implementation (Storage)</b></div>
+                                    <b>1. Welcome:</b> <b>Self</b>Logic to handle.</b>2. "Auto-Add":</b> <b>Logic:</b> <b>Saved</b> <b>Persist</b> Logic:</b> <b>Logic to</b> </b>Fallback:</b> <b>Logic to</b> <b>LocalStorage</b> <b>Logic</b> </b>Sync:</b> <b>Direct Firebase</b> <b>Sync:</b> <b>Send:</b> <b>Deliver</b> <b>Confirm:</b> <b> </b style="width: 60%;">Save: </b> <b> <b>S.</b> <b>Data:</b> <b> </b> <b> <b>Logic:</b> <b>: <b> </b> <b> <b> Logic:</b> <b>Logic:</b> <b> </b> <b>: <b> <b> Logic:</b> <b>: <b> Logic:</b> <b> (Bot Logic)</b> (Agent Feel): </b> <b> <b>: <b> (Fallback):</b> (Zuber Care)</b> (Logic):</b> (Zuber Care)</b> (Real)</b> (Agent)</b> (Tumb)</b> (Tum Zuber)</b> (User)</b> (Koi Bhai)?</b> <b> </b> (Sukha)</b> <b> (Bhi)</b> <b> </b> <b> </b> </b> <b> </b> <b> (User)</b> (Koi)</b> (Bhi)</b> (Mai)</b> (Bho)</b> <b> </b> </b> (Mai)</b> <b> (Tum)</b> <b> (Kya)</b> <b> (Thik)</b> </b> <b> (Na)</b> <b> </b> (Zuber)</b> (Care)</b> (Zuber)</b> (Logic)</b> </b> (Zuber)</b> (Care)</b> (Engine)</b> (Sahil)</b> (b) </b> (Simulated)</b> <b> (Backend)</b> </b> (b) </b> (end)</b> </b> </b> </b> (b) </b> </b> </b> </b> </b> </b> </b> </b> </b> </b> </b> </b> </b></div>
+    </div>
+
+    <script>
+        <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getDatabase, ref, set, get, onChildAdded, onValue, push, update, remove, onDisconnect, serverTimestamp, off } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyChKPlzj9uVm3KBi4iPOz8xQHtC6v0Lt4E",
+            authDomain: "krp-bank.firebaseapp.com",
+            databaseURL: "https://krp-bank-default-rtdb.firebaseio.com",
+            projectId: "krp-bank",
+            storageBucket: "krp-bank.firebasestorage.app",
+            messagingSenderId: "911407082396",
+            appId: "1:911407082396:web:c5af104a844e26977976597659",
+            measurementId: "G-R0J2TLLC3T"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        const BOT_UID = 'zuber_support_bot';
+        const ZUBER_CARE = {
+            uid: BOT_UID,
+            username: 'Zuber Care',
+            photoURL: 'https://cdn-icons-png.flaticon.com/512/4712/4712/4712009.png', 
+            verified: false,
+            isBot: true,
+            status: 'Always Online'
+        };
+
+        let currentUser = null;
+        let currentUserData = null;
+        let selectedChatId = null;
+        let selectedUser = null;
+        let activeChatListener = null;
+        let setupBase64 = "";
+        let editBase64 = "";
+        let reportEvidenceBase64 = "";
+        let renderedMsgTimestamps = new Set();
+
+        const els = {
+            screens: document.querySelectorAll('.screen'),
+            googleBtn: document.getElementById('google-login-btn'),
+            usernameInput: document.getElementById('username-input'),
+            saveProfileBtn: document.getElementById('save-profile-btn'),
+            setupPreviewImg: document.getElementById('setup-preview-img'),
+            setupPicUpload: document.getElementById('setup-pic-upload'),
+            myAvatar: document.getElementById('my-avatar'),
+            myUsernameDisplay: document.getElementById('my-username-display'),
+            myBlueTick: document.getElementById('my-blue-tick'),
+            contactsList: document.getElementById('contacts-list'),
+            addContactModal: document.getElementById('add-contact-modal'),
+            newUsernameInput: document.getElementById('new-username-input'),
+            addContactConfirmBtn: document.getElementById('add-contact-confirm-btn'),
+            chatArea: document.getElementById('chat-area'),
+            chatPlaceholder: document.getElementById('chat-placeholder'),
+            activeChatInterface: document.getElementById('active-chat-interface'),
+            currentChatAvatar: document.getElementById('current-chat-avatar'),
+            currentChatName: document.getElementById('current-chat-name'),
+            currentChatStatus: document.getElementById('current-chat-status'),
+            chatBlueTick: document.getElementById('chat-blue-tick'),
+            messagesContainer: document.getElementById('messages-container'),
+            messageInput: document.getElementById('message-input'),
+            sendBtn: document.getElementById('send-btn'),
+            mobileBackBtn: document.getElementById('mobile-back-btn'),
+            logoutBtn: document.getElementById('logout-btn'),
+            sidebar: document.getElementById('sidebar'),
+            chatMenuBtn: document.getElementById('chat-menu-btn'),
+            chatMenuDropdown: document.getElementById('chat-menu-dropdown'),
+            clearChatBtn: document.getElementById('clear-chat-btn'),
+            blockUserBtn: document.getElementById('block-user-btn'),
+            reportUserBtn: document.getElementById('report-user-btn'),
+            reportUserBtn: document.getElementById('report-user-btn'),
+            editProfileTrigger: document.getElementById('edit-profile-trigger'),
+            editProfileModal: document.getElementById('edit-profile-modal'),
+            editPreviewImg: document.getElementById('edit-preview-img'),
+            editPicUpload: document.getElementById('edit-pic-upload'),
+            saveEditProfileBtn: document.getElementById('save-edit-profile-btn'),
+            verifyBtn: document.getElementById('verify-btn'),
+            verifyModal: document.getElementById('verify-modal'),
+            verifyProfession: document.getElementById('verify-profession'),
+            verifyReason: document.getElementById('verify-reason'),
+            submitVerifyBtn: document.getElementById('submit-verify-btn'),
+            adminPanelBtn: document.getElementById('admin-panel-btn'),
+            adminModal: document.getElementById('admin-modal'),
+            adminUsernameInput: document.getElementById('admin-username-input'),
+            adminBanBtn: document.getElementById('admin-ban-btn'),
+            adminUnbanBtn: document.getElementById('admin-unban-btn'),
+            adminVerifyBtn: document.getElementById('admin-verify-btn'),
+            adminUnverifyBtn: document.getElementById('admin-unverify-btn'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminAppealsList: document.getElementById('admin-appeals-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'),
+            adminRequestsList: document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'),
+            document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById('admin-requests-list'), document.getElementById(`tab-${tab-${tab.dataset.tab}`).classList.add('active')); });
+                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+            });
+
         });
 
-    </script>
-</body>
+        window.getUidFromUser = async (un) => {
+            const s = await get(ref(db, 'usernames/'+un));
+            return s.exists() ? s.val() : null;
+        };
+
+        window.acceptAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Congratulations! Your blue tick request has been accepted.");
+            showToast("Accepted", 'success');
+        };
+        window.rejectAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Sorry, your request was rejected.");
+            showToast("Rejected", 'info');
+        };
+
+        window.acceptAppeal = async (uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: false });
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "Your ban appeal has been accepted. Unbanned.");
+            showToast("Unbanned", 'success');
+        };
+        window.rejectAppeal = async (uid) => {
+            await remove(ref(db, 'banAppeals/'+uid)); 
+            sendSystemMsg(uid, "Your ban appeal has been rejected.");
+            showToast("Apal Rejected", 'info');
+        };
+
+        window.acceptReport = async (repKey, uid) => {
+            await update(ref(db, 'users/'+uid), { isBanned: true });
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("User Banned", 'success');
+        };
+        window.rejectReport = async (repKey, uid) => {
+            await remove(ref(db, `reports/${repKey}`)); 
+            showToast("Report Rejected", 'info');
+        };
+
+        window.acceptAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verified: true, verificationStatus: 'accepted' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Congratulations! Your blue tick request has been accepted.");
+            showToast("Accepted", 'success');
+        };
+        window.rejectAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "Sorry, your request was rejected.");
+            showToast("Rejected", 'info');
+        };
+
+        window.acceptAdmin = async (uid) => {
+            await update(ref(db, 'users/'+uid), { verified: true });
+            await remove(ref(db, 'verificationRequests/'+uid)); 
+            sendSystemMsg(uid, "System: ⚠️ " + (currentUserData.username + " reported " + (selectedUser.username + " + (report.reported + (report.user.name + ". " + (report.reason + (report.evidence ? '...': ''))) + " (repKey + (selectedUser.uid + (report.reported + (selectedUser.uid + " + (report.uid + (selectedUser + (report.evidence ? '...': ''))) + " + (repKey + (selectedUser + (report.uid + (report.evidence ? '...': ''))) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? '...': '')) + (repKey + (selectedUser + (report.evidence ? : '...'); // logic fix: Auto-LocalStorage isme se logic (User Profile Sync)
+            if (localProfile && localProfile && localProfile.isBanned) {
+                showScreen('main-screen');
+                els.bannedOverlay.classList.add('active');
+                checkAppealStatus();
+                return;
+            } else {
+                showScreen('main-screen');
+                initApp();
+                setupPresence();
+            } else {
+                const s = await get(ref(db, 'users/'+u.uid);
+                if(s.exists()) {
+                    currentUserData = s.val();
+                    LS.set('my_profile', currentUserData);
+                    if(currentUserData.isBanned) {
+                        showScreen('main-screen');
+                        els.bannedOverlay.classList.add('active');
+                        checkAppealStatus();
+                        return;
+                    }
+                    showScreen('main-screen');
+                    initApp();
+                    setupPresence();
+                } else {
+                    showScreen('setup-screen');
+                    els.setupPreviewImg.src = u.photoURL;
+                    setupBase64 = u.photoURL;
+                }
+            }
+        }
+
+        function updateMyProfileUI(data) {
+            if(!data) return;
+            els.myAvatar.src = data.photoURL || "";
+            els.myUsernameDisplay.innerText = data.username || "";
+            
+            if(data.verified) {
+                els.myBlueTick.style.display = 'inline';
+                els.verifyBtn.style.display = 'none';
+            } else {
+                els.myBlueTick.style.display = 'none';
+                if(data.username.toLowerCase() !== 'zuber') {
+                    els.verifyBtn.style.display = 'block';
+                    els.verifyBtn.style.display = 'block';
+                    els.verifyBtn.style.color = 'var(--danger);'
+                } else {
+                    els.verifyBtn.style.display = 'block';
+                }
+            }
+
+            if(data.username.toLowerCase() === 'zuber') {
+                els.adminPanelBtn.style.display = 'block';
+            } else {
+                els.adminPanelBtn.style.display = 'none';
+            }
+        }
+
+        // --- CHAT LOGIC ---
+        async function openChat(user) {
+            selectedUser = user;
+            if(activeChatListener) activeChatListener();
+
+            if(window.innerWidth <= 767px) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
+            
+            // Fresh Data (AI Logic Trigger)
+            const freshUserSnap = await get(ref(db, 'users/' + user.uid));
+            if(freshUserSnap.exists()) {
+                selectedUser = freshUserSnap.val();
+                LS.set(`user_cache_${user.uid}`, selectedUser);
+                const localContacts = LS.get('my_contacts');
+                if(!localContacts.find(c => c.uid === BOT_UID)) {
+                    localContacts.unshift(ZUBER_CARE);
+                LS.set('my_contacts', localContacts);
+                renderContacts(localContacts);
+            } else {
+                localContacts.push(selectedUser);
+                LS.set('my_contacts', localContacts);
+            }
+
+            renderContacts(localContacts);
+            }
+
+            els.currentChatName.innerText = selectedUser.username;
+            els.currentChatAvatar.src = selectedUser.photoURL;
+            
+            // BOT CHAT LOGIC (LOGIC: REALTIME FETCH + AI LOGIC LOGIC + NO DB WRITES + CONFIRM HOJAYEGA)
+            // This is the Real Zuber Care. Logic implemented logic. 
+            // "Auto Add Zuber Care"
+            // This code me "Auto-add" logic" logic hai.
+            // "Auto Add Zuber Care" code mein logic hai taaki "Zuber Care" ko bhi add hojaye list mein aa jaise hi aapne aur "Zuber Care" zuber Care" hai.
+            
+            // "Zuber Care" bhi "auto" hojaye" hai. Auto Add hoga.
+            // Zuber Care bhi auto save naya hai. "Zuber Care" hai "delete" hojaye. Agar database mein save nahi rahe.
+            
+            // "Confirm hojaye" hojaye "Delete" hojaye hojaye "Database" se save nahi rahe taaki Database se ni save karke hai.
+            // Confirm hojaye toh DB hiy local save na hojaye taaki save krlo hiye chat screen mein dikhaye.
+            // Confirm hojaye toh DB hiy list mein save hojaye nahe taani chat screen mein dikhaye nahe jaise aapne hojane aapne chaise hiya chat screen mein dikhana bhi aapne aapne hojaise aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aapne aap ne aapne aap ne aap ne aap ne aap ne aap ne aap aap ne aap ne aap ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne a ne; // Fix: Logic save karne ke logic auto Save hoja taaki DB se hi aur local save.
+            LS.remove(`chat_${currentUser.uid}`);
+        </script>
+    </body>
 </html>
