@@ -46,6 +46,7 @@
         .btn-google { background: var(--white); color: var(--text-primary); border: 1px solid #dadce0; padding: 12px 24px; border-radius: 24px; cursor: pointer; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; margin-top: 10px; }
         .btn-primary { background: var(--primary-color); color: var(--white); border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; }
         .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
 
         .chat-layout { display: flex; width: 100%; height: 100%; }
         .sidebar { width: 100%; background: var(--white); display: flex; flex-direction: column; z-index: 5; flex-shrink: 0; }
@@ -192,7 +193,7 @@
                         </div>
                         <div style="display:flex; gap:5px; z-index: 15;">
                             <button class="action-btn" id="admin-panel-btn" style="display:none"><i class="fas fa-user-shield"></i></button>
-                            <button class="action-btn" id="verify-btn"><i class="fas fa-certificate"></i></button>
+                            <button class="action-btn" id="verify-btn" style="display:none"><i class="fas fa-certificate"></i></button>
                             <button class="action-btn" id="add-contact-btn"><i class="fas fa-user-plus"></i></button>
                             <button class="action-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
                         </div>
@@ -589,15 +590,41 @@
         function initApp() {
             els.myAvatar.src = currentUserData.photoURL;
             els.myUsernameDisplay.innerText = currentUserData.username;
-            if(currentUserData.verified) els.myBlueTick.style.display = 'inline';
+            
+            // FIX 1: Add Realtime Listener to MY OWN profile
+            // This ensures the Blue Tick appears instantly when Admin approves it
+            const myProfileRef = ref(db, 'users/' + currentUser.uid);
+            onValue(myProfileRef, (snap) => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    currentUserData = data; // Update local state
+                    LS.set('my_profile', data); // Update LS cache
 
-            if(currentUserData.username.toLowerCase() === 'zuber') {
-                els.adminPanelBtn.style.display = 'block';
-                loadAdminPanel();
-            } else {
-                els.adminPanelBtn.style.display = 'none';
-                els.verifyBtn.style.display = 'block';
-            }
+                    // Update UI based on NEW state
+                    els.myAvatar.src = data.photoURL;
+                    els.myUsernameDisplay.innerText = data.username;
+                    
+                    if(data.verified) {
+                        els.myBlueTick.style.display = 'inline';
+                        // Hide verify button if already verified
+                        els.verifyBtn.style.display = 'none';
+                    } else {
+                        els.myBlueTick.style.display = 'none';
+                        // Show verify button only if not admin and not verified
+                        if(data.username !== 'zuber') {
+                            els.verifyBtn.style.display = 'block';
+                        }
+                    }
+
+                    // Handle Admin Button
+                    if(data.username.toLowerCase() === 'zuber') {
+                        els.adminPanelBtn.style.display = 'block';
+                        loadAdminPanel();
+                    } else {
+                        els.adminPanelBtn.style.display = 'none';
+                    }
+                }
+            });
 
             // Load Contacts (LS first, then FB update)
             const localContacts = LS.get('my_contacts');
@@ -638,10 +665,10 @@
             });
         }
 
-        // --- CHAT LOGIC (THE FIX) ---
+        // --- CHAT LOGIC ---
         async function openChat(user) {
             selectedUser = user;
-            // 1. DETACH OLD LISTENER (Crucial Fix)
+            // 1. DETACH OLD LISTENER
             if(activeChatListener) activeChatListener();
 
             if(window.innerWidth <= 767) { els.chatArea.classList.add('active'); els.sidebar.classList.add('hidden-mobile'); }
@@ -735,7 +762,7 @@
                 els.reportReason.value = '';
             };
 
-            // 3. REALTIME LISTENER (CHILD_ADDED) - Prevents Double Messages
+            // 3. REALTIME LISTENER
             if(!isBlocked && !theirBlockSnap.exists()) {
                 const chatRef = ref(db, 'chats/'+cid);
                 activeChatListener = onChildAdded(chatRef, (snapshot) => {
@@ -814,9 +841,42 @@
             if(confirm("Clear local chat history?")) {
                 LS.clearChat(selectedChatId);
                 els.messagesContainer.innerHTML = '';
-                // Optional: Clear from Firebase too if any exists
                 remove(ref(db, 'chats/'+selectedChatId));
             }
+        };
+
+        // --- VERIFY BUTTON LOGIC (FIXED) ---
+        els.verifyBtn.onclick = () => {
+            // FIX 2: Prevent Verified users from requesting again
+            if(currentUserData.verified) {
+                showToast("You are already verified!", 'success');
+                return;
+            }
+            els.verifyModal.classList.add('open');
+        };
+
+        els.submitVerifyBtn.onclick = async () => {
+            // FIX 3: Double check DB before sending request
+            const snap = await get(ref(db, `users/${currentUser.uid}`));
+            if(snap.exists() && snap.val().verified) {
+                showToast("You are already verified.", 'error');
+                els.verifyModal.classList.remove('open');
+                return;
+            }
+
+            const profession = els.verifyProfession.value.trim();
+            const reason = els.verifyReason.value.trim();
+            
+            if(!profession || !reason) return showToast("Fill all fields", 'error');
+
+            const data = { profession, reason, status: 'pending' };
+            await set(ref(db, 'verificationRequests/'+currentUser.uid), data);
+            showToast("Sent", 'success'); 
+            els.verifyModal.classList.remove('open');
+            
+            // Clear inputs
+            els.verifyProfession.value = '';
+            els.verifyReason.value = '';
         };
 
         // --- ADMIN PANEL ---
@@ -837,6 +897,7 @@
                 if(!s.exists()) { els.adminRequestsList.innerHTML = '<p>No requests</p>'; return; }
                 s.forEach(c => {
                     const req = c.val();
+                    // Only show PENDING requests
                     if(req.status === 'pending') {
                         const uid = c.key;
                         get(ref(db, 'users/'+uid)).then(uSnap => {
@@ -914,6 +975,7 @@
             showToast("Accepted", 'success');
         };
         window.rejectAdmin = async (uid) => {
+            // We delete the request so they can try again later if they want
             await update(ref(db, 'users/'+uid), { verificationStatus: 'rejected' });
             await remove(ref(db, 'verificationRequests/'+uid));
             sendSystemMsg(uid, "Sorry, your request was rejected.");
@@ -1036,15 +1098,6 @@
                 showToast("Added", 'success'); 
                 els.addContactModal.classList.remove('open');
             } else showToast("Not found", 'error');
-        };
-        
-        // --- VERIFY MODAL ---
-        els.verifyBtn.onclick = () => els.verifyModal.classList.add('open');
-        els.submitVerifyBtn.onclick = async () => {
-            const data = { profession: els.verifyProfession.value, reason: els.verifyReason.value, status: 'pending' };
-            await set(ref(db, 'verificationRequests/'+currentUser.uid), data);
-            showToast("Sent", 'success'); 
-            els.verifyModal.classList.remove('open');
         };
 
         // --- ADMIN BUTTON CLICK EVENT ---
